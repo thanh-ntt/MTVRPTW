@@ -96,7 +96,7 @@ public class DataModel {
         return distanceTable[node.id][0];
     }
 
-    public double getDistance(Node source, Node destination) {
+    public double getTravelTime(Node source, Node destination) {
         return distanceTable[source.id][destination.id];
     }
 
