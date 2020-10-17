@@ -93,6 +93,9 @@ public class Route {
                 // How long the truck has to wait at customer r (before insertion of u)
                 double waitingTimeAtR = Math.max(routedPath.get(r).readyTime - arrivalTimes.get(r), 0);
                 pushForward = Math.max(0, prevPushForward - waitingTimeAtR);
+
+                // All time window constraint after customer r will remains (satisfied)
+                if (pushForward == 0) return true;
             }
             if (getStartingServiceTimeAt(r) + pushForward > routedPath.get(r).dueTime) return false;
             prevPushForward = pushForward;
