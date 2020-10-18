@@ -75,19 +75,19 @@ public class Route {
     boolean checkTimeConstraint(int p, Node u) {
         // Time feasibility for customer u
         Node m = routedPath.get(p - 1), n = routedPath.get(p);
-        double arrivalTimeAtU = getStartingServiceTimeAt(p - 1) + m.serviceTime + dataModel.getTravelTime(m, u);
-        if (arrivalTimeAtU > u.dueTime) return false;
+        double arrivalTimeCustomerU = getStartingServiceTimeAt(p - 1) + m.serviceTime + dataModel.getTravelTime(m, u);
+        if (arrivalTimeCustomerU > u.dueTime) return false;
 
-        double serviceTimeAtU = Math.max(arrivalTimeAtU, u.readyTime);
+        double serviceTimeCustomerU = Math.max(arrivalTimeCustomerU, u.readyTime);
         double prevPushForward = -1;
 
         for (int r = p; r < routedPath.size(); r++) {
             double pushForward;
             if (r == p) {  // customer n = customer i(p)
-                double oldServiceTimeAtN = getStartingServiceTimeAt(p);
-                double newArrivalTimeAtN = serviceTimeAtU + u.serviceTime + dataModel.getTravelTime(u, n);
-                double newServiceTimeAtN = Math.max(newArrivalTimeAtN, n.readyTime);
-                pushForward = newServiceTimeAtN - oldServiceTimeAtN;
+                double oldServiceTimeCustomerN = getStartingServiceTimeAt(p);
+                double newArrivalTimeCustomerN = serviceTimeCustomerU + u.serviceTime + dataModel.getTravelTime(u, n);
+                double newServiceTimeCustomerN = Math.max(newArrivalTimeCustomerN, n.readyTime);
+                pushForward = newServiceTimeCustomerN - oldServiceTimeCustomerN;
             } else {
                 assert prevPushForward != -1;
                 // How long the truck has to wait at customer r (before insertion of u)
