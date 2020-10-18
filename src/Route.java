@@ -64,7 +64,7 @@ public class Route {
     }
 
     boolean checkCapacityConstraint(Node node) {
-        return totalDemand + node.demand > dataModel.getVehicleCapacity();
+        return totalDemand + node.demand <= dataModel.getVehicleCapacity();
     }
 
     /**
