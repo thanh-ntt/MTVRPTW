@@ -217,7 +217,7 @@ public class VehicleRouting {
      * Find the best feasible route to insert the customer u into.
      *
      * @param routes the list of candidate routes that the customer u can be inserted into
-     * @param u customer to be inserted
+     * @param u the new customer to be inserted
      * @return a RoutePositionPair representing the best feasible route and position, or null if no feasible route found
      */
     RoutePositionPair getBestRouteAndPosition(List<Route> routes, Node u) {
@@ -257,7 +257,7 @@ public class VehicleRouting {
 
     /**
      * Get the best feasible insertion cost of the customer u on the route.
-     * Due to time limit, we only explore p-neighbourhood
+     * Due to time limit, we only explore p-neighbourhood, value of p-neighbourhood is read from parameters.txt file.
      * @return insertion cost or null if it's not feasible to insert this customer into the route.
      */
     CostPositionPair getBestInsertionCostAndPosition(Route route, Node u) {
@@ -288,7 +288,7 @@ public class VehicleRouting {
     }
 
     /**
-     * Get the cost of inserting new customer u between i(p-1) = m and ip = n
+     * Get the cost of inserting new customer u between i(p-1) and ip
      * -> Route before insertion: (i0, ..., i(p-1), ip, ..., i0)
      * -> Route after insertion: (i0, ..., i(p-1), u, ip, ..., i0)
      * @return insertion cost or null if it's not feasible to insert this customer into the position.

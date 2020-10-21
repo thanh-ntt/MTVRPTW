@@ -95,12 +95,12 @@ public class Route {
         }
     }
 
-    public boolean canInsertAtPosition(int position, Node node) {
-        return checkCapacityConstraint(position, node) && checkTimeConstraint(position, node);
+    public boolean canInsertAtPosition(int p, Node u) {
+        return checkCapacityConstraint(p, u) && checkTimeConstraint(p, u);
     }
 
-    boolean checkCapacityConstraint(int p, Node node) {
-        return vehicleLoadInCurTrip.get(p) + node.demand <= dataModel.getVehicleCapacity();
+    boolean checkCapacityConstraint(int p, Node u) {
+        return vehicleLoadInCurTrip.get(p) + u.demand <= dataModel.getVehicleCapacity();
     }
 
     /**
