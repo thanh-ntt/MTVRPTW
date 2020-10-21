@@ -45,7 +45,6 @@ public class Route {
      * @param node the new customer to be inserted
      */
     public void insertAtPosition(int p, Node node) {
-        assert !node.equals(depot);
         routedPath.add(p, node);
         totalDemand += node.demand;
 

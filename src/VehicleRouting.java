@@ -78,12 +78,40 @@ public class VehicleRouting {
      * @return a list of routes corresponding to each vehicles
      */
     List<Route> constructRoute(List<Node> cluster) {
+        List<Route> routes = runI1InsertionHeuristic(cluster);
+
+        // Step 4, 5: try to reduce # vehicles needed
+        int targetedNumVehicles = routes.size() - 1;
+        while (targetedNumVehicles > 0) {
+            RoutesOptimizationResult routesOptimizationResult1 = optimizeNumVehicles1(cluster, targetedNumVehicles);
+            if (routesOptimizationResult1.unRoutedCustomers.isEmpty()) {  // can serve all customers
+                routes = routesOptimizationResult1.routes;  // update routes (this ensures that 'routes' is always a valid solution)
+                targetedNumVehicles--;  // try to route with 1 less vehicle
+            } else {  // there are customers remained un-routed, move to step 5.1, 5.2
+                RoutesOptimizationResult routesOptimizationResult2 = optimizeNumVehicles2(routesOptimizationResult1.unRoutedCustomers, routesOptimizationResult1.routes);
+                if (routesOptimizationResult2.unRoutedCustomers.isEmpty()) {  // can serve all customers
+                    return routesOptimizationResult2.routes;
+                } else {  // fail to serve all customers, return the last valid solution (routes)
+                    return routes;
+                }
+            }
+        }
+        return routes;
+    }
+
+    /**
+     * I1 insertion heuristic proposed by Solomon, 1987.
+     *
+     * @param cluster list of all nodes (customers) in the current cluster
+     * @return a feasible solution that serves all customers
+     */
+    List<Route> runI1InsertionHeuristic(List<Node> cluster) {
         List<Route> routes = new ArrayList<>();
         // un-routed customers are ordered by geographically distance from depot
         // TODO: try to order by lowest allowed starting time for service, suggested in Solomon 1987
         TreeSet<Node> unRoutedCustomers = new TreeSet<>(Comparator.comparingDouble(a -> dataModel.getDistanceFromDepot(a)));
         unRoutedCustomers.addAll(cluster);
-        // First apply Solomon's sequential insertion heuristic
+        // Apply Solomon's sequential insertion heuristic
         do {
             // get the furthest (geographically) un-routed customer from depot
             Node seed = unRoutedCustomers.pollLast();
@@ -104,6 +132,106 @@ public class VehicleRouting {
         } while (!unRoutedCustomers.isEmpty());
 
         return routes;
+    }
+
+    /**
+     * Try to reduce the number of vehicles needed.
+     *  1. Select m demand nodes (customers) as seed points, initialize m routes at once.
+     *  2. Insert the remaining un-routed demand nodes (customers) into their best feasible positions of m routes.
+     *
+     * @param cluster all demand nodes (customers)
+     * @param m targeted number of vehicles
+     * @return
+     */
+    RoutesOptimizationResult optimizeNumVehicles1(List<Node> cluster, int m) {
+        // Order the demand nodes (customers) based on distance from depot
+        TreeSet<Node> orderedCustomers = new TreeSet<>(Comparator.comparingDouble(a -> dataModel.getDistanceFromDepot(a)));
+        orderedCustomers.addAll(cluster);
+        List<Route> routes = new ArrayList<>();
+
+        // Step 4: select m furthest demand nodes as seed points, initialize m routes at once
+        for (int i = 0; i < m; i++) {
+            Route route = new Route(dataModel, orderedCustomers.pollLast());
+            routes.add(route);
+        }
+
+        List<Node> unRoutedCustomers = new ArrayList<>();  // list of customers that cannot be routed
+
+        // Step 5: insert the remaining un-routed demand nodes (customers) into their best feasible positions of m routes
+        Iterator<Node> iterator = orderedCustomers.iterator();
+        while (iterator.hasNext()) {
+            Node customer = iterator.next();
+            RoutePositionPair bestRoutePositionPair = getBestRouteAndPosition(routes, customer);
+            if (bestRoutePositionPair != null) {  // can insert this customer
+                bestRoutePositionPair.route.insertAtPosition(bestRoutePositionPair.position, customer);
+                iterator.remove();  // remove this customer from list of un-routed customers
+            } else {  // cannot route this customer
+                unRoutedCustomers.add(customer);
+            }
+        }
+
+        return new RoutesOptimizationResult(routes, unRoutedCustomers);
+    }
+
+    /**
+     * Try to insert the list of un-routed customers into the list of existing routes.
+     *
+     * @param unRoutedCustomers
+     * @param routes the existing routes
+     * @return a RoutesOptimizationResult
+     */
+    RoutesOptimizationResult optimizeNumVehicles2(List<Node> unRoutedCustomers, List<Route> routes) {
+        // Step 5.1: add a dummy depot to each route
+        for (Route route : routes) {
+            route.insertAtPosition(route.getLength() - 1, dataModel.getDepot());
+        }
+        // Step 5.2: insert the remaining demand nodes - un-routed customers
+        // For each un-routed customers, we try to find the best route to insert this customer into
+        // Note: this is different from Solomon's I1 insertion heuristic where the route is fixed
+        //          and we try to find the best customers to insert to the route
+        Iterator<Node> iterator = unRoutedCustomers.iterator();
+        while (iterator.hasNext()) {
+            Node customer = iterator.next();
+            RoutePositionPair bestRoutePositionPair = getBestRouteAndPosition(routes, customer);
+            if (bestRoutePositionPair != null) {  // can insert the customer into 1 of the routes
+                Route bestRoute = bestRoutePositionPair.route;
+                int bestPosition = bestRoutePositionPair.position;
+                // do this since the length of the bestRoute might change after inserting the new customer
+                boolean isInsertedLastPosition = bestPosition == bestRoute.getLength() - 1;
+                bestRoute.insertAtPosition(bestPosition, customer);
+                if (isInsertedLastPosition) {
+                    // If a node is inserted into the place between the dummy depot closest to the destination
+                    // depot and the destination depot, then add a new dummy depot after the node
+                    bestRoute.insertAtPosition(bestRoute.getLength() - 1, dataModel.getDepot());
+                }
+                iterator.remove();  // remove this customer from list of un-routed customers
+            } else {  // cannot route this customer
+                break;  // early terminate, return remaining un-routed customers
+            }
+        }
+        return new RoutesOptimizationResult(routes, unRoutedCustomers);
+    }
+
+    /**
+     * Find the best feasible route to insert the customer u into.
+     *
+     * @param routes the list of candidate routes that the customer u can be inserted into
+     * @param u customer to be inserted
+     * @return a RoutePositionPair representing the best feasible route and position, or null if no feasible route found
+     */
+    RoutePositionPair getBestRouteAndPosition(List<Route> routes, Node u) {
+        CostPositionPair bestCostPositionPair = null;
+        Route routeToInsert = null;
+
+        for (Route route : routes) {
+            CostPositionPair costPositionPair = getBestInsertionCostAndPosition(route, u);
+            if (costPositionPair != null
+                    && (bestCostPositionPair == null || bestCostPositionPair.cost < costPositionPair.cost)) {
+                bestCostPositionPair = costPositionPair;
+                routeToInsert = route;
+            }
+        }
+        return routeToInsert != null ? new RoutePositionPair(routeToInsert, bestCostPositionPair.position) : null;
     }
 
     void mergeRoutes(List<List<Route>> parallelRoutes) {
@@ -192,6 +320,24 @@ class NodePositionPair {
     int position;
     public NodePositionPair(Node n, int p) {
         node = n;
+        position = p;
+    }
+}
+
+class RoutesOptimizationResult {
+    List<Route> routes;
+    List<Node> unRoutedCustomers;
+    public RoutesOptimizationResult(List<Route> routes, List<Node> unRoutedCustomers) {
+        this.routes = routes;
+        this.unRoutedCustomers = unRoutedCustomers;
+    }
+}
+
+class RoutePositionPair {
+    Route route;
+    int position;
+    public RoutePositionPair(Route route, int p) {
+        this.route = route;
         position = p;
     }
 }
