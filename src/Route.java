@@ -7,12 +7,16 @@ public class Route {
     // Note that this time can be different from service time, since service time = max(arrival time, ready time)
     List<Double> arrivalTimes;
     Node depot;
-    int totalDemand;
+    // The total demand of all customers in the current trip (reset to 0 when returns to depot)
+    // If routedPath = [depot, c1, c2, c3, depot, c4, c5, depot]
+    // and demand = [0, 1, 2, 1, 0, 2, 3, 0]
+    // Then vehicleLoadInCurTrip = [0, 4, 4, 4, 4, 5, 5, 5]
+    List<Integer> vehicleLoadInCurTrip;
 
     public Route(DataModel dataModel, Node seed) {
         this.dataModel = dataModel;
         depot = dataModel.getDepot();
-        totalDemand = 0;
+        vehicleLoadInCurTrip = new ArrayList<>(Arrays.asList(0, seed.demand, seed.demand));
         routedPath = new ArrayList<>(Arrays.asList(depot, seed, depot));
         initializeServiceTimeFromRoutedPath(routedPath);
     }
@@ -39,17 +43,32 @@ public class Route {
     }
 
     /**
-     * Insert the new customer (node) at position p in the route
+     * Insert the new customer u at position p in the route
      * and update the arrival time for all following customers
      * @param p index in the route to be inserted (0-based indexing)
-     * @param node the new customer to be inserted
+     * @param u the new customer to be inserted
      */
-    public void insertAtPosition(int p, Node node) {
-        routedPath.add(p, node);
-        totalDemand += node.demand;
+    public void insertAtPosition(int p, Node u) {
+        assert u != depot;  // there is a separate method addDummyDepot
+        int previousVehicleLoad = vehicleLoadInCurTrip.get(p);
+        routedPath.add(p, u);
+        vehicleLoadInCurTrip.add(p, previousVehicleLoad + u.demand);
+
+        // Update the vehicle load for other nodes in the trip
+        int idx = p - 1;
+        while (idx >= 0 && routedPath.get(idx) != depot) {
+            vehicleLoadInCurTrip.set(idx, previousVehicleLoad + u.demand);
+            idx--;
+        }
+        idx = p + 1;
+        while (idx < routedPath.size()) {
+            vehicleLoadInCurTrip.set(idx, previousVehicleLoad + u.demand);
+            if (routedPath.get(idx) == depot) break;  // add up to the next depot
+            idx++;
+        }
 
         // update arrival time for all nodes after position p
-        double arrivalTimeAtP = getStartingServiceTimeAt(p - 1) + routedPath.get(p - 1).serviceTime + dataModel.getTravelTime(routedPath.get(p - 1), node);
+        double arrivalTimeAtP = getStartingServiceTimeAt(p - 1) + routedPath.get(p - 1).serviceTime + dataModel.getTravelTime(routedPath.get(p - 1), u);
         arrivalTimes.add(p, arrivalTimeAtP);
         for (int i = p + 1; i < arrivalTimes.size(); i++) {
             double arrivalTimeAtI = getStartingServiceTimeAt(i - 1) + routedPath.get(i - 1).serviceTime + dataModel.getTravelTime(routedPath.get(i - 1), routedPath.get(i));
@@ -58,12 +77,30 @@ public class Route {
         }
     }
 
-    public boolean canInsertAtPosition(int position, Node node) {
-        return checkCapacityConstraint(node) && checkTimeConstraint(position, node);
+    /**
+     * Add a dummy depot to the end of the route.
+     */
+    public void addDummyDepot() {
+        routedPath.add(routedPath.size(), depot);
+        vehicleLoadInCurTrip.add(0);
     }
 
-    boolean checkCapacityConstraint(Node node) {
-        return totalDemand + node.demand <= dataModel.getVehicleCapacity();
+    /**
+     * Remove the last depot if it's a dummy depot
+     */
+    public void removeDummyDepot() {
+        if (routedPath.get(routedPath.size() - 1) == depot && routedPath.get(routedPath.size() - 2) == depot) {
+            routedPath.remove(routedPath.size() - 1);
+            vehicleLoadInCurTrip.remove(vehicleLoadInCurTrip.size() - 1);
+        }
+    }
+
+    public boolean canInsertAtPosition(int position, Node node) {
+        return checkCapacityConstraint(position, node) && checkTimeConstraint(position, node);
+    }
+
+    boolean checkCapacityConstraint(int p, Node node) {
+        return vehicleLoadInCurTrip.get(p) + node.demand <= dataModel.getVehicleCapacity();
     }
 
     /**
@@ -121,10 +158,6 @@ public class Route {
 
     public int getLength() {
         return routedPath.size();
-    }
-
-    public int getTotalDemand() {
-        return totalDemand;
     }
 
     @Override

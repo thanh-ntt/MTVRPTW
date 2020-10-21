@@ -183,7 +183,7 @@ public class VehicleRouting {
     RoutesOptimizationResult optimizeNumVehicles2(List<Node> unRoutedCustomers, List<Route> routes) {
         // Step 5.1: add a dummy depot to each route
         for (Route route : routes) {
-            route.insertAtPosition(route.getLength() - 1, dataModel.getDepot());
+            route.addDummyDepot();
         }
         // Step 5.2: insert the remaining demand nodes - un-routed customers
         // For each un-routed customers, we try to find the best route to insert this customer into
@@ -202,13 +202,14 @@ public class VehicleRouting {
                 if (isInsertedLastPosition) {
                     // If a node is inserted into the place between the dummy depot closest to the destination
                     // depot and the destination depot, then add a new dummy depot after the node
-                    bestRoute.insertAtPosition(bestRoute.getLength() - 1, dataModel.getDepot());
+                    bestRoute.addDummyDepot();
                 }
                 iterator.remove();  // remove this customer from list of un-routed customers
             } else {  // cannot route this customer
                 break;  // early terminate, return remaining un-routed customers
             }
         }
+        routes.forEach(Route::removeDummyDepot);
         return new RoutesOptimizationResult(routes, unRoutedCustomers);
     }
 
