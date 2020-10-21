@@ -74,33 +74,43 @@ public class Route {
      */
     boolean checkTimeConstraint(int p, Node u) {
         // Time feasibility for customer u
-        Node m = routedPath.get(p - 1), n = routedPath.get(p);
-        double arrivalTimeCustomerU = getStartingServiceTimeAt(p - 1) + m.serviceTime + dataModel.getTravelTime(m, u);
+        double arrivalTimeCustomerU = getStartingServiceTimeAt(p - 1) + routedPath.get(p - 1).serviceTime + dataModel.getTravelTime(routedPath.get(p - 1), u);
         if (arrivalTimeCustomerU > u.dueTime) return false;
 
-        double serviceTimeCustomerU = Math.max(arrivalTimeCustomerU, u.readyTime);
-        double prevPushForward = -1;
+        double pushForward = getPushForwardTimeAtNextCustomer(u, p);
+        // Check time window constraint at p
+        if (getStartingServiceTimeAt(p) + pushForward > routedPath.get(p).dueTime) return false;
 
-        for (int r = p; r < routedPath.size(); r++) {
-            double pushForward;
-            if (r == p) {  // customer n = customer i(p)
-                double oldServiceTimeCustomerN = getStartingServiceTimeAt(p);
-                double newArrivalTimeCustomerN = serviceTimeCustomerU + u.serviceTime + dataModel.getTravelTime(u, n);
-                double newServiceTimeCustomerN = Math.max(newArrivalTimeCustomerN, n.readyTime);
-                pushForward = newServiceTimeCustomerN - oldServiceTimeCustomerN;
-            } else {
-                assert prevPushForward != -1;
-                // How long the truck has to wait at customer r (before insertion of u)
-                double waitingTimeAtR = Math.max(routedPath.get(r).readyTime - arrivalTimes.get(r), 0);
-                pushForward = Math.max(0, prevPushForward - waitingTimeAtR);
+        // Check time window constraints at r > p
+        for (int r = p + 1; r < routedPath.size(); r++) {
+            double prevPushForward = pushForward;
+            // How long the truck has to wait at customer r (before insertion of u)
+            double waitingTimeAtR = Math.max(routedPath.get(r).readyTime - arrivalTimes.get(r), 0);
+            pushForward = Math.max(0, prevPushForward - waitingTimeAtR);
 
-                // All time window constraint after customer r will remains (satisfied)
-                if (pushForward == 0) return true;
-            }
+            // All time window constraint after customer r will remains (satisfied)
+            if (pushForward == 0) return true;
+            // Check time window constraint at r
             if (getStartingServiceTimeAt(r) + pushForward > routedPath.get(r).dueTime) return false;
-            prevPushForward = pushForward;
         }
         return true;
+    }
+
+    /**
+     * Return the push forward time at customer ip if a new customer u is inserted between i(p-1) = m and ip = n
+     * -> Route before insertion: (i0, ..., i(p-1), ip, ..., i0)
+     * -> Route after insertion: (i0, ..., i(p-1), u, ip, ..., i0)
+     */
+    double getPushForwardTimeAtNextCustomer(Node u, int p) {
+        Node m = routedPath.get(p - 1), n = routedPath.get(p);
+        double arrivalTimeCustomerU = getStartingServiceTimeAt(p - 1) + m.serviceTime + dataModel.getTravelTime(m, u);
+        assert arrivalTimeCustomerU > u.dueTime;  // this time feasibility condition should be checked before
+        double serviceTimeCustomerU = Math.max(arrivalTimeCustomerU, u.readyTime);
+        double oldServiceTimeCustomerN = getStartingServiceTimeAt(p);
+        double newArrivalTimeCustomerN = serviceTimeCustomerU + u.serviceTime + dataModel.getTravelTime(u, n);
+        double newServiceTimeCustomerN = Math.max(newArrivalTimeCustomerN, n.readyTime);
+        double pushForward = newServiceTimeCustomerN - oldServiceTimeCustomerN;
+        return pushForward;
     }
 
     /**
@@ -116,5 +126,10 @@ public class Route {
 
     public int getTotalDemand() {
         return totalDemand;
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(routedPath.toArray());
     }
 }

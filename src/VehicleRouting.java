@@ -21,6 +21,8 @@ public class VehicleRouting {
             List<Route> constructedRoute = constructRoute(cluster);
             parallelRoutes.add(constructedRoute);
         }
+
+        mergeRoutes(parallelRoutes);
     }
 
     List<List<Node>> constructClusters(int numClusters) {
@@ -78,8 +80,9 @@ public class VehicleRouting {
     List<Route> constructRoute(List<Node> cluster) {
         List<Route> routes = new ArrayList<>();
         // un-routed customers are ordered by geographically distance from depot
-        // TODO: try to order by lowest allowed starting time for service
+        // TODO: try to order by lowest allowed starting time for service, suggested in Solomon 1987
         TreeSet<Node> unRoutedCustomers = new TreeSet<>(Comparator.comparingDouble(a -> dataModel.getDistanceFromDepot(a)));
+        unRoutedCustomers.addAll(cluster);
         // First apply Solomon's sequential insertion heuristic
         do {
             // get the furthest (geographically) un-routed customer from depot
@@ -97,9 +100,14 @@ public class VehicleRouting {
 
                 bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers);
             }
+            routes.add(route);
         } while (!unRoutedCustomers.isEmpty());
 
         return routes;
+    }
+
+    void mergeRoutes(List<List<Route>> parallelRoutes) {
+
     }
 
     /**
@@ -119,20 +127,30 @@ public class VehicleRouting {
     }
 
     /**
-     * Get the best feasible insertion cost of the customer on the route.
+     * Get the best feasible insertion cost of the customer u on the route.
      * Due to time limit, we only explore p-neighbourhood
      * @return insertion cost or null if it's not feasible to insert this customer into the route.
      */
-    CostPositionPair getBestInsertionCostAndPosition(Route route, Node customer) {
-        assert !route.routedPath.contains(customer);
+    CostPositionPair getBestInsertionCostAndPosition(Route route, Node u) {
+        assert !route.routedPath.contains(u);
         CostPositionPair result = null;
+
+        // to save time, only consider p-neighbourhood of u (new customer)
+        // this is the set of p nodes on the route closest (distance/time) to u
         List<Integer> pNeighbourhood = new ArrayList<>();
-        // TODO: construct p-neighbourhood
-        for (int i = 1; i < route.getLength(); i++)
-            pNeighbourhood.add(i);
+        if (route.getLength() - 2 <= dataModel.pNeighbourhoodSize) {  // excluding the depot (depot appears twice in any routes)
+            for (int i = 1; i < route.getLength(); i++)
+                pNeighbourhood.add(i);
+        } else {
+            PriorityQueue<Integer> pq = new PriorityQueue<>(Comparator.comparingDouble(a -> dataModel.getTravelTime(route.routedPath.get(a), u)));
+            for (int i = 1; i < route.getLength(); i++)
+                pq.offer(i);
+            for (int i = 0; i < dataModel.pNeighbourhoodSize; i++)
+                pNeighbourhood.add(pq.poll());
+        }
 
         for (int p : pNeighbourhood) {
-            Double cost = getInsertionCost(route, customer, p);
+            Double cost = getInsertionCost(route, u, p);
             if (cost != null && (result == null || result.cost < cost)) {
                 result = new CostPositionPair(cost, p);
             }
@@ -141,16 +159,21 @@ public class VehicleRouting {
     }
 
     /**
-     * Get the cost of inserting new customer between customers i(p - 1) and ip in the route
+     * Get the cost of inserting new customer u between i(p-1) = m and ip = n
      * -> Route before insertion: (i0, ..., i(p-1), ip, ..., i0)
-     * -> Route after insertion: (i0, ..., i(p-1), customer, ip, ..., i0)
+     * -> Route after insertion: (i0, ..., i(p-1), u, ip, ..., i0)
      * @return insertion cost or null if it's not feasible to insert this customer into the position.
      */
-    Double getInsertionCost(Route route, Node customer, int p) {
+    Double getInsertionCost(Route route, Node u, int p) {
         // Check capacity constraint and time constraint
-        if (!route.canInsertAtPosition(p, customer)) return null;
-        // TODO: implement "best" insertion
-        return null;
+        if (!route.canInsertAtPosition(p, u)) return null;
+
+        // Route travel time increase, c11 in I1, Solomon, 1987
+        double c11 = dataModel.getTravelTime(route.routedPath.get(p - 1), u) + dataModel.getTravelTime(u, route.routedPath.get(p)) - dataModel.getTravelTime(route.routedPath.get(p - 1), route.routedPath.get(p));
+        // compute service push forward in service starting time at customer ip
+        double c12 = route.getPushForwardTimeAtNextCustomer(u, p);
+        // I1 insertion heuristic - Solomon, 1987
+        return dataModel.alpha1 * c11 + dataModel.alpha2 * c12;
     }
 
 }

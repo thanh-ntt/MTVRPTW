@@ -15,6 +15,8 @@ public class DataModel {
     Node[] nodes;  // depot + all customers
     int numCustomers = 100;
     int numNodes = 101;  // depot + customers
+    double alpha1, alpha2;  // parameters used in parallel construction heuristic - I1 insertion heuristic (Solomon, 1987)
+    int pNeighbourhoodSize;
 
     public DataModel(String inputDirectory) {
         distanceTable = new double[numNodes][numNodes];
@@ -79,6 +81,17 @@ public class DataModel {
             assert this.vehicleCapacity >= demand;
     }
 
+    public void setAlphaParameters(double first, double second) {
+        alpha1 = first;
+        alpha2 = second;
+        assert alpha1 + alpha1 == 1;
+    }
+
+    public void setPNeighbourhoodSize(int size) {
+        assert size >= 1;
+        pNeighbourhoodSize = size;
+    }
+
     public int getVehicleCapacity() {
         assert vehicleCapacity > 0;
         return vehicleCapacity;
@@ -119,7 +132,7 @@ class Node {
     }
 
     public String toString() {
-        return "C" + id;
+        return "c" + id;
     }
 
     @Override

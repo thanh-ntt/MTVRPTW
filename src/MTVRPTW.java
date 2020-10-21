@@ -42,6 +42,8 @@ public class MTVRPTW {
             Scanner inputParameter = new Scanner(inputParametersFile);
             this.numClustersThreshold = inputParameter.nextInt();
             dataModel.setVehicleCapacity(inputParameter.nextInt());
+            dataModel.setAlphaParameters(inputParameter.nextDouble(), inputParameter.nextDouble());
+            dataModel.setPNeighbourhoodSize(inputParameter.nextInt());
         } catch (FileNotFoundException e) {
             System.out.println("File not found");
             e.printStackTrace();
