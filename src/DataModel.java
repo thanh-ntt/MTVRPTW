@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.stream.IntStream;
 
-// TODO: make this singleton
 public class DataModel {
     double[][] distanceTable;
     int[][] timeWindows;
@@ -124,6 +123,7 @@ class Node {
     int demand;
     int readyTime, dueTime;
     int serviceTime;
+
     public Node(int id, int demand, int readyTime, int dueTime, int serviceTime) {
         this.id = id;
         this.demand = demand;

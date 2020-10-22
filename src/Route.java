@@ -18,7 +18,7 @@ public class Route {
         depot = dataModel.getDepot();
         vehicleLoadInCurTrip = new ArrayList<>(Arrays.asList(0, seed.demand, seed.demand));
         routedPath = new ArrayList<>(Arrays.asList(depot, seed, depot));
-        initializeServiceTimeFromRoutedPath(routedPath);
+        initializeArrivalTimes(routedPath);
     }
 
     /**
@@ -30,7 +30,7 @@ public class Route {
         depot = dataModel.getDepot();
         routedPath = new ArrayList<>(l.routedPath);
         routedPath.addAll(m.routedPath.subList(1, m.routedPath.size()));  // skip the first depot in m
-        initializeServiceTimeFromRoutedPath(routedPath);
+        initializeArrivalTimes(routedPath);
 
         // Initialize vehicle load in each trip
         vehicleLoadInCurTrip = new ArrayList<>();
@@ -52,12 +52,12 @@ public class Route {
     }
 
     /**
-     * This method initialize the service time for each customer in the routedPath
-     * and stores in serviceTimes list.
-     * It also checks (assert) for time feasibility of the path / route.
-     * TODO: (refactor) change this to arrival time
+     * This method initialize the arrival time at each customer in the routedPath
+     * and stores in arrivalTimes list.
+     * It also checks (assert) for time feasibility of the path / route
+     * (arrival time at each customer is before due time).
      */
-    void initializeServiceTimeFromRoutedPath(List<Node> routedPath) {
+    void initializeArrivalTimes(List<Node> routedPath) {
         arrivalTimes = new ArrayList<>();
         for (int i = 0; i < routedPath.size(); i++) {
             Double arrivalTime = null;

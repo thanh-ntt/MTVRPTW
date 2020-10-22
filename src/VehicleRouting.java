@@ -22,6 +22,7 @@ public class VehicleRouting {
             parallelRoutes.add(constructedRoute);
         }
 
+        // Apply the merging approach (to reduce # vehicles needed)
         List<Route> mergedRoute = mergeRoutes(parallelRoutes);
     }
 
