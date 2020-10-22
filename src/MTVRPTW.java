@@ -7,27 +7,36 @@ public class MTVRPTW {
 
     int numClustersThreshold;
 
-    // TODO: write logs
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
     /**
-     * Main algorithm.
+     * Algorithm: a multi-start strategy where we consider different threshold for the maximum # clusters.
+     * For each number of cluster, we find the best solution by running initial construction and improvement phase,
+     * then select the best result (solution) in all solutions.
+     * The algorithm for each # cluster is as follow:
+     *      1. Initial construction:
+     *          1.1. Cluster demand nodes by time window
+     *          1.2. Parallel construct a solution for each cluster with Solomon's sequential insertion heuristic
+     *          1.3. Merge these solutions iteratively
+     *      2. Improvement phase
+     *
      */
     public void runAlgorithm() {
-        String inputDirectory = System.getProperty("user.dir") + "/input/R110ok/";
+        String inputDirectory = System.getProperty("user.dir") + "/input/R110/";
+        logger.info("Reading input from " + inputDirectory);
         DataModel dataModel = new DataModel(inputDirectory);  // read from input (add parameters later)
         readInputParameters(dataModel, inputDirectory);
 
         // Step 1: try different # of clusters
-        List<VehicleRouting> solutions = new ArrayList<>();
+        List<List<Route>> solutions = new ArrayList<>();
 
         // Step 2-9 (currently 2-7): Initial solution construction
         for (int numClusters = 1; numClusters <= numClustersThreshold; numClusters++) {
+            logger.info("Try " + numClusters + " clusters");
             VehicleRouting vehicleRouting = new VehicleRouting(dataModel);  // also pass dataModel
             // Do 3 steps: cluster, parallel construction, merge
-            vehicleRouting.initialConstruction(numClusters);
-            // assert vehicleRouting.validRouting()
-            solutions.add(vehicleRouting);
+            List<Route> routes = vehicleRouting.initialConstruction(numClusters);
+            solutions.add(routes);
         }
     }
 

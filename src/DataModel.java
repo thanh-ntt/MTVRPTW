@@ -34,6 +34,7 @@ public class DataModel {
         }
     }
 
+    // TODO: read input from Solomon's benchmark (well-known format) instead of this customized format
     void readInputFromFiles(String inputDirectory) {
         try {
             File inputDistanceFile = new File(inputDirectory + "/input_distancetable.txt");
@@ -133,7 +134,8 @@ class Node {
     }
 
     public String toString() {
-        return "c" + id;
+        if (id == 0) return "Depot";
+        else return "c" + id;
     }
 
     @Override

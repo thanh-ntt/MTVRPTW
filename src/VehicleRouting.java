@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * This is "Solution" in paper, but we called it VehicleRouting to make it clear that
@@ -7,23 +8,28 @@ import java.util.*;
  */
 public class VehicleRouting {
     DataModel dataModel;
+    static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
     public VehicleRouting(DataModel dataModel) {
         this.dataModel = dataModel;
     }
 
-    public void initialConstruction(int numClusters) {
+    public List<Route> initialConstruction(int numClusters) {
         List<List<Node>> clusters = constructClusters(numClusters);
 
         // Apply parallel construction: construct routes for each cluster separately
+        // TODO: implement route-merge-improve in depth-first order (instead of linear)
         List<List<Route>> parallelRoutes = new ArrayList<>();
         for (List<Node> cluster : clusters) {
             List<Route> constructedRoute = constructRoute(cluster);
             parallelRoutes.add(constructedRoute);
         }
+        logger.info("Parallel construction, # vehicles: " + parallelRoutes.stream().mapToInt(list -> list.size()).sum());
 
         // Apply the merging approach (to reduce # vehicles needed)
         List<Route> mergedRoute = mergeRoutes(parallelRoutes);
+        logger.info("Merge routes, # vehicles: " + mergedRoute.size());
+        return mergedRoute;
     }
 
     List<List<Node>> constructClusters(int numClusters) {
