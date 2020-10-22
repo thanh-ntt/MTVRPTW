@@ -113,6 +113,7 @@ public class Route {
      */
     public void addDummyDepot() {
         routedPath.add(routedPath.size(), depot);
+        arrivalTimes.add(arrivalTimes.get(arrivalTimes.size() - 1));  // duplicate arrival time of last depot
         vehicleLoadInCurTrip.add(0);
     }
 
@@ -122,6 +123,7 @@ public class Route {
     public void removeDummyDepot() {
         if (routedPath.get(routedPath.size() - 1) == depot && routedPath.get(routedPath.size() - 2) == depot) {
             routedPath.remove(routedPath.size() - 1);
+            arrivalTimes.remove(arrivalTimes.size() - 1);
             vehicleLoadInCurTrip.remove(vehicleLoadInCurTrip.size() - 1);
         }
     }
