@@ -22,9 +22,40 @@ public class Route {
     }
 
     /**
+     * Constructor to create a route by merging 2 routes l, m (in the same order).
+     */
+    public Route(Route l, Route m) {
+        assert l.getLength() > 2 && m.getLength() > 2;  // each route should consist of at least 1 customer
+        this.dataModel = l.dataModel;
+        depot = dataModel.getDepot();
+        routedPath = new ArrayList<>(l.routedPath);
+        routedPath.addAll(m.routedPath.subList(1, m.routedPath.size()));  // skip the first depot in m
+        initializeServiceTimeFromRoutedPath(routedPath);
+
+        // Initialize vehicle load in each trip
+        vehicleLoadInCurTrip = new ArrayList<>();
+        for (int i = 0; i < routedPath.size(); i++)
+            vehicleLoadInCurTrip.add(0);
+
+        int lastDepotIdx = 0, curIdx = 1, loadSum = 0;
+        while (curIdx < vehicleLoadInCurTrip.size()) {
+            if (routedPath.get(curIdx) == depot) {
+                for (int i = lastDepotIdx + 1; i <= curIdx; i++)
+                    vehicleLoadInCurTrip.set(i, loadSum);
+                lastDepotIdx = curIdx;
+                loadSum = 0;
+            } else {
+                loadSum += routedPath.get(curIdx).demand;
+            }
+            curIdx++;
+        }
+    }
+
+    /**
      * This method initialize the service time for each customer in the routedPath
      * and stores in serviceTimes list.
      * It also checks (assert) for time feasibility of the path / route.
+     * TODO: (refactor) change this to arrival time
      */
     void initializeServiceTimeFromRoutedPath(List<Node> routedPath) {
         arrivalTimes = new ArrayList<>();
@@ -114,9 +145,18 @@ public class Route {
         if (arrivalTimeCustomerU > u.dueTime) return false;
 
         double pushForward = getPushForwardTimeAtNextCustomer(u, p);
+        return checkPushForwardTimeFromNode(pushForward, p);
+    }
+
+    /**
+     * Check if the time window constraints in the route from node p are all satisfied with a given
+     * push forward time from the previous nodes.
+     * @param pushForward the push forward time from previous nodes
+     * @param p starting index to check (until end of route)
+     */
+    boolean checkPushForwardTimeFromNode(double pushForward, int p) {
         // Check time window constraint at p
         if (getStartingServiceTimeAt(p) + pushForward > routedPath.get(p).dueTime) return false;
-
         // Check time window constraints at r > p
         for (int r = p + 1; r < routedPath.size(); r++) {
             double prevPushForward = pushForward;

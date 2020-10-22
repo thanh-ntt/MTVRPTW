@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.stream.IntStream;
 
+// TODO: make this singleton
 public class DataModel {
     double[][] distanceTable;
     int[][] timeWindows;

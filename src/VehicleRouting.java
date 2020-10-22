@@ -22,7 +22,7 @@ public class VehicleRouting {
             parallelRoutes.add(constructedRoute);
         }
 
-        mergeRoutes(parallelRoutes);
+        List<Route> mergedRoute = mergeRoutes(parallelRoutes);
     }
 
     List<List<Node>> constructClusters(int numClusters) {
@@ -235,8 +235,58 @@ public class VehicleRouting {
         return routeToInsert != null ? new RoutePositionPair(routeToInsert, bestCostPositionPair.position) : null;
     }
 
-    void mergeRoutes(List<List<Route>> parallelRoutes) {
+    /**
+     * Merge routes between Si and K(i+1), where Si = S(i-1) U Ki.
+     * Details can be found in the merging approach, Chang's paper.
+     * @param parallelRoutes the list of all routes from the parallel construction method
+     * @return the final route after merging all routes in parallelRoutes
+     */
+    List<Route> mergeRoutes(List<List<Route>> parallelRoutes) {
+        // Copy, to keep the order of each list in parallelRoutes intact
+        List<Route> curK = new ArrayList<>();
+        curK.addAll(parallelRoutes.get(0));
+        for (int i = 0; i < parallelRoutes.size() - 1; i++) {  // if there is only 1 cluster, return the cluster immediately
+            List<Route> nextK = new ArrayList<>();
+            nextK.addAll(parallelRoutes.get(i + 1));
 
+            // Sort routes in Ki in increasing order of the latest arrival time at the depot (equals to starting service time at last node - depot)
+            curK.sort(Comparator.comparingDouble(a -> a.getStartingServiceTimeAt(a.getLength() - 1)));
+
+            // Sort routes in K(i+1) in increasing order of the starting service time at the first customer
+            nextK.sort(Comparator.comparingDouble(a -> a.getStartingServiceTimeAt(1)));
+            // Step 3: merge the first route in Ki with the first feasible route in K(i+1), then continue
+            // Implementation: for each route l in Ki, try to merge it with first feasible route m in K(i + 1)
+            //          if can merge, remove m from K(i+1) and add the merged route (l + m) to S(k+1)
+            //          else, add l to S(k+1)
+            //      in both case, increase counter for Ki
+            List<Route> nextS = new ArrayList<>();
+            Iterator<Route> curKIterator = curK.iterator();
+            while (curKIterator.hasNext()) {
+                Route l = curKIterator.next();
+                // Find first route in nextK that can be merged with l
+                Route firstFeasibleMergeRoute = null;
+                for (Route m : nextK) {
+                    // Compute the push forward time at the last depot of l (first depot of m)
+                    double pushForward = l.getStartingServiceTimeAt(l.getLength() - 1) - m.getStartingServiceTimeAt(0);
+                    if (m.checkPushForwardTimeFromNode(pushForward, 0)) {
+                        firstFeasibleMergeRoute = m;
+                        break;
+                    }
+                }
+                if (firstFeasibleMergeRoute != null) {  // feasible to merge
+                    nextK.remove(firstFeasibleMergeRoute);  // remove the corresponding route from nextK
+                    nextS.add(new Route(l, firstFeasibleMergeRoute));  // add the merged route to the result nextS
+                } else {  // no feasible route in nextK to merge (including the case when nextK is empty)
+                    nextS.add(l);
+                }
+                curKIterator.remove();  // in both cases, remove the route l from curK
+            }
+            // Add all remaining routes in nextK (if exist) to nextS
+            nextS.addAll(nextK);
+
+            curK = nextS;  // Assign curK to S(k+1)
+        }
+        return curK;
     }
 
     /**
