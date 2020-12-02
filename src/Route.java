@@ -33,9 +33,7 @@ public class Route {
         initializeArrivalTimes(routedPath);
 
         // Initialize vehicle load in each trip
-        vehicleLoadInCurTrip = new ArrayList<>();
-        for (int i = 0; i < routedPath.size(); i++)
-            vehicleLoadInCurTrip.add(0);
+        vehicleLoadInCurTrip = new ArrayList<>(Collections.nCopies(routedPath.size(), 0));
 
         int lastDepotIdx = 0, curIdx = 1, loadSum = 0;
         while (curIdx < vehicleLoadInCurTrip.size()) {

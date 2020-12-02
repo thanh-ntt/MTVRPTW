@@ -22,10 +22,11 @@ public class MTVRPTW {
      *
      */
     public void runAlgorithm() {
-        String inputDirectory = System.getProperty("user.dir") + "/input/R110/";
+        String inputDirectory = System.getProperty("user.dir") + "/input/";
         logger.info("Reading input from " + inputDirectory);
-        DataModel dataModel = new DataModel(inputDirectory);  // read from input (add parameters later)
+        DataModel dataModel = new DataModel();  // read from input (add parameters later)
         readInputParameters(dataModel, inputDirectory);
+        dataModel.readInputAndPopulateData();
 
         // Step 1: try different # of clusters
         List<List<Route>> solutions = new ArrayList<>();
@@ -49,6 +50,7 @@ public class MTVRPTW {
         try {
             File inputParametersFile = new File( inputDirectory + "/parameters.txt");
             Scanner inputParameter = new Scanner(inputParametersFile);
+            dataModel.setInputTestFolder(inputDirectory + "/" + inputParameter.nextLine());
             this.numClustersThreshold = inputParameter.nextInt();
             dataModel.setVehicleCapacity(inputParameter.nextInt());
             dataModel.setAlphaParameters(inputParameter.nextDouble(), inputParameter.nextDouble());

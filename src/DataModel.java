@@ -1,7 +1,6 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 import java.util.stream.IntStream;
@@ -17,13 +16,17 @@ public class DataModel {
     int numNodes = 101;  // depot + customers
     double alpha1, alpha2;  // parameters used in parallel construction heuristic - I1 insertion heuristic (Solomon, 1987)
     int pNeighbourhoodSize;
+    String inputTestFolder;
 
-    public DataModel(String inputDirectory) {
+    public DataModel() {
         distanceTable = new double[numNodes][numNodes];
         timeWindows = new int[numNodes][2];
         serviceTimes = new int[numNodes];
         demands = new int[numNodes];
-        readInputFromFiles(inputDirectory);
+    }
+
+    void readInputAndPopulateData() {
+        readInputFromFiles(inputTestFolder);
         populateNodeData();
     }
 
@@ -35,27 +38,27 @@ public class DataModel {
     }
 
     // TODO: read input from Solomon's benchmark (well-known format) instead of this customized format
-    void readInputFromFiles(String inputDirectory) {
+    void readInputFromFiles(String inputTestDirectory) {
         try {
-            File inputDistanceFile = new File(inputDirectory + "/input_distancetable.txt");
+            File inputDistanceFile = new File(inputTestDirectory + "/input_distancetable.txt");
             Scanner inputDistance = new Scanner(inputDistanceFile);
             for (int i = 0; i < numNodes; i++) {
                 for (int j = 0; j < numNodes; j++) {
                     distanceTable[i][j] = inputDistance.nextDouble();
                 }
             }
-            File inputTimeWindowFile = new File(inputDirectory + "/input_timewindow.txt");
+            File inputTimeWindowFile = new File(inputTestDirectory + "/input_timewindow.txt");
             Scanner inputTimeWindow = new Scanner(inputTimeWindowFile);
             for (int i = 0; i < numNodes; i++) {
                 timeWindows[i][0] = inputTimeWindow.nextInt();
                 timeWindows[i][1] = inputTimeWindow.nextInt();
             }
-            File inputServiceTimeFile = new File(inputDirectory + "/input_servicetime.txt");
+            File inputServiceTimeFile = new File(inputTestDirectory + "/input_servicetime.txt");
             Scanner inputServiceTime = new Scanner(inputServiceTimeFile);
             for (int i = 0; i < numNodes; i++) {
                 serviceTimes[i] = inputServiceTime.nextInt();
             }
-            File inputDemandFile = new File(inputDirectory + "/input_demand.txt");
+            File inputDemandFile = new File(inputTestDirectory + "/input_demand.txt");
             Scanner inputDemand = new Scanner(inputDemandFile);
             for (int i = 0; i < numNodes; i++) {
                 demands[i] = inputDemand.nextInt();
@@ -74,6 +77,10 @@ public class DataModel {
 
     public int getNumCustomers() {
         return numCustomers;
+    }
+
+    public void setInputTestFolder(String inputTestFolder) {
+        this.inputTestFolder = inputTestFolder;
     }
 
     public void setVehicleCapacity(int capacity) {

@@ -1,6 +1,7 @@
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * This is "Solution" in paper, but we called it VehicleRouting to make it clear that
@@ -97,9 +98,9 @@ public class VehicleRouting {
         // Step 4, 5: try to reduce # vehicles needed
         int targetedNumVehicles = routes.size() - 1;
         while (targetedNumVehicles > 0) {
-            RoutesOptimizationResult routesOptimizationResult1 = optimizeNumVehicles(cluster, targetedNumVehicles);
-            if (routesOptimizationResult1.unRoutedCustomers.isEmpty()) {  // can serve all customers
-                routes = routesOptimizationResult1.routes;  // update routes (this ensures that 'routes' is always a valid solution)
+            RoutesOptimizationResult routesOptimizationResult = optimizeNumVehicles(cluster, targetedNumVehicles);
+            if (routesOptimizationResult.unRoutedCustomers.isEmpty()) {  // can serve all customers
+                routes = routesOptimizationResult.routes;  // update routes (this ensures that 'routes' is always a valid solution)
                 targetedNumVehicles--;  // try to route with 1 less vehicle
             } else {  // there are customers remained un-routed, output (previous) routes with (targetedNumVehicles + 1) vehicles used
                 return routes;
@@ -159,12 +160,9 @@ public class VehicleRouting {
         unRoutedCustomers.sort(Comparator.comparingDouble(a -> dataModel.getDistanceFromDepot(a)));
 
         // Step 4: select m furthest demand nodes as seed points, initialize m routes at once
-        List<Route> routes = unRoutedCustomers.subList(0, m).stream().map(c -> {
-            Route route = new Route(dataModel, c);
-            route.addDummyDepot();  // Step 5.1: add a dummy depot to each route
-            return route;
-        }).collect(Collectors.toList());
-
+        List<Route> routes = unRoutedCustomers.subList(0, m).stream()
+                .map(c -> new Route(dataModel, c)).collect(Collectors.toList());
+        routes.forEach(Route::addDummyDepot);  // Step 5.1: add a dummy depot to each route
         unRoutedCustomers.subList(0, m).clear();  // remove first m customers from the list
 
         // Step 5: insert the remaining un-routed demand nodes (customers) into their best feasible positions of m routes
@@ -226,11 +224,9 @@ public class VehicleRouting {
      */
     List<Route> mergeRoutes(List<List<Route>> parallelRoutes) {
         // Copy, to keep the order of each list in parallelRoutes intact
-        List<Route> curK = new ArrayList<>();
-        curK.addAll(parallelRoutes.get(0));
+        List<Route> curK = new ArrayList<>(parallelRoutes.get(0));
         for (int i = 0; i < parallelRoutes.size() - 1; i++) {  // if there is only 1 cluster, return the cluster immediately
-            List<Route> nextK = new ArrayList<>();
-            nextK.addAll(parallelRoutes.get(i + 1));
+            List<Route> nextK = new ArrayList<>(parallelRoutes.get(i + 1));
 
             // Sort routes in Ki in increasing order of the latest arrival time at the depot (equals to starting service time at last node - depot)
             curK.sort(Comparator.comparingDouble(a -> a.getStartingServiceTimeAt(a.getLength() - 1)));
@@ -304,11 +300,9 @@ public class VehicleRouting {
             for (int i = 1; i < route.getLength(); i++)
                 pNeighbourhood.add(i);
         } else {
-            PriorityQueue<Integer> pq = new PriorityQueue<>(Comparator.comparingDouble(a -> dataModel.getTravelTime(route.routedPath.get(a), u)));
-            for (int i = 1; i < route.getLength(); i++)
-                pq.offer(i);
-            for (int i = 0; i < dataModel.pNeighbourhoodSize; i++)
-                pNeighbourhood.add(pq.poll());
+            List<Integer> orderedPositions = IntStream.rangeClosed(1, route.getLength()).boxed().collect(Collectors.toList());
+            orderedPositions.sort(Comparator.comparingDouble(i -> dataModel.getTravelTime(route.routedPath.get(i), u)));
+            pNeighbourhood.addAll(orderedPositions.subList(0, dataModel.pNeighbourhoodSize));
         }
 
         for (int p : pNeighbourhood) {
