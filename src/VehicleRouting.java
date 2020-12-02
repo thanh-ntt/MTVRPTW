@@ -33,6 +33,14 @@ public class VehicleRouting {
         return mergedRoute;
     }
 
+    /**
+     * Construct (numClusters) clusters based on customer's latest delivery time (dueTime).
+     * This is for the vehicle to make multiple trips (same vehicle make multiple trips in different clusters).
+     *
+     * @param numClusters target number of clusters
+     * @return a list of clusters, each one contains all customers with latest delivery time larger than all customers
+     * in the previous clusters.
+     */
     List<List<Node>> constructClusters(int numClusters) {
         List<List<Node>> clusters = new ArrayList<>();
         // 3.1.1 step 2: estimate ideal # vehicles needed in each cluster
@@ -43,31 +51,29 @@ public class VehicleRouting {
 
         // 3.1.1 step 3: distribute demand nodes to clusters
         // Priority Queue ordered by latest service time
-        PriorityQueue<Node> priorityQueue = new PriorityQueue<>(Comparator.comparingInt(a -> a.dueTime));
-        priorityQueue.addAll(dataModel.getDemandNodes());
-        while (!priorityQueue.isEmpty()) {
+        List<Node> orderedCustomers = dataModel.getDemandNodes();
+        orderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
+        Queue<Node> queue = new LinkedList<>(orderedCustomers);
+
+        // Step 3: distribute the (sorted) demand nodes to the numClusters ordered clusters
+        while (!queue.isEmpty()) {
             List<Node> curCluster = new ArrayList<>();
-            int curClusterDemand = 0;
-            do {
-                Node node = priorityQueue.poll();
-                curCluster.add(node);
-                curClusterDemand += node.demand;
-
-                // If adding next node to the cluster results in exceeding average demand per cluster,
-                // move the node to the next cluster
-                if (!priorityQueue.isEmpty()
-                        && curClusterDemand + priorityQueue.peek().demand > idealDemandPerCluster) {
-                    break;
-                }
-            } while (!priorityQueue.isEmpty());
-
             // if this is the last cluster, just add everything
-            if (clusters.size() == numClusters) {
-                while (!priorityQueue.isEmpty())
-                    curCluster.add(priorityQueue.poll());
+            if (clusters.size() == numClusters - 1) curCluster.addAll(queue);
+            assert !curCluster.isEmpty();
+
+            int clusterDemand = 0;
+            while (!queue.isEmpty()) {
+                Node customer = queue.peek();
+                // If adding next customer to the curCluster results in exceeding average demand per cluster,
+                // move the customer to the next cluster
+                if (clusterDemand + customer.demand > idealDemandPerCluster) break;
+                else queue.poll();
+
+                curCluster.add(customer);
+                clusterDemand += customer.demand;
             }
 
-            assert !curCluster.isEmpty();
             clusters.add(curCluster);
         }
 
@@ -111,6 +117,7 @@ public class VehicleRouting {
     List<Route> runI1InsertionHeuristic(List<Node> cluster) {
         List<Route> routes = new ArrayList<>();
         // un-routed customers are ordered by geographically distance from depot
+        // use TreeSet to support get largest (pollLast) and remove in O(lg n)
         // TODO: try to order by lowest allowed starting time for service, suggested in Solomon 1987
         TreeSet<Node> unRoutedCustomers = new TreeSet<>(Comparator.comparingDouble(a -> dataModel.getDistanceFromDepot(a)));
         unRoutedCustomers.addAll(cluster);
