@@ -60,7 +60,10 @@ public class VehicleRouting {
         while (!queue.isEmpty()) {
             List<Node> curCluster = new ArrayList<>();
             // if this is the last cluster, just add everything
-            if (clusters.size() == numClusters - 1) curCluster.addAll(queue);
+            if (clusters.size() == numClusters - 1) {
+                curCluster.addAll(queue);
+                queue.clear();
+            }
             assert !curCluster.isEmpty();
 
             int clusterDemand = 0;
