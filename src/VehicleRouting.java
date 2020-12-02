@@ -300,7 +300,7 @@ public class VehicleRouting {
             for (int i = 1; i < route.getLength(); i++)
                 pNeighbourhood.add(i);
         } else {
-            List<Integer> orderedPositions = IntStream.rangeClosed(1, route.getLength()).boxed().collect(Collectors.toList());
+            List<Integer> orderedPositions = IntStream.rangeClosed(1, route.getLength() - 1).boxed().collect(Collectors.toList());
             orderedPositions.sort(Comparator.comparingDouble(i -> dataModel.getTravelTime(route.routedPath.get(i), u)));
             pNeighbourhood.addAll(orderedPositions.subList(0, dataModel.pNeighbourhoodSize));
         }
