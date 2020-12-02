@@ -22,11 +22,19 @@ public class VehicleRouting {
         // Apply parallel construction: construct routes for each cluster separately
         // TODO: implement route-merge-improve in depth-first order (instead of linear)
         List<List<Route>> parallelRoutes = new ArrayList<>();
-        for (List<Node> cluster : clusters) {
+        for (int i = 0; i < clusters.size(); i++) {
+            List<Node> cluster = clusters.get(i);
             List<Route> constructedRoute = constructRoute(cluster);
+            // from the second cluster onward, for each route (vehicle), we set the time to leave depot to be as late as possible
+            if (i > 0) {
+                constructedRoute.forEach(route -> route.optimizeRoute());
+            }
             parallelRoutes.add(constructedRoute);
         }
-        logger.info("Parallel construction, # vehicles: " + parallelRoutes.stream().mapToInt(list -> list.size()).sum());
+        logger.info("Parallel construction, # vehicles "
+                + parallelRoutes.stream().mapToInt(list -> list.size()).sum()
+                + ": "
+                + Arrays.toString(parallelRoutes.stream().map(list -> list.size()).collect(Collectors.toList()).toArray()));
 
         // Apply the merging approach (to reduce # vehicles needed)
         List<Route> mergedRoute = mergeRoutes(parallelRoutes);
@@ -54,6 +62,7 @@ public class VehicleRouting {
         // Priority Queue ordered by latest service time
         List<Node> orderedCustomers = dataModel.getDemandNodes();
         orderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
+//        orderedCustomers.sort(Comparator.comparingDouble(a -> dataModel.getDistanceFromDepot(a)));
         Queue<Node> queue = new LinkedList<>(orderedCustomers);
 
         // Step 3: distribute the (sorted) demand nodes to the numClusters ordered clusters
@@ -106,7 +115,7 @@ public class VehicleRouting {
                 routes = routesOptimizationResult.routes;  // update routes (this ensures that 'routes' is always a valid solution)
                 targetedNumVehicles--;  // try to route with 1 less vehicle
             } else {  // there are customers remained un-routed, output (previous) routes with (targetedNumVehicles + 1) vehicles used
-                return routes;
+                break;
             }
         }
         return routes;

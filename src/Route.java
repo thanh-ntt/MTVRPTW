@@ -190,6 +190,48 @@ public class Route {
     }
 
     /**
+     * Optimize the current route: make the vehicle leave the depot as late as possible (primary objective),
+     * but serves each customer as early as possible (secondary objective).
+     * Steps:
+     *  1. Start with a feasible route
+     *  2. From end to start: make all arrival time of all nodes (including depot) as late as possible
+     *  3. Calculate new (latest) time to leave depot
+     *  4. From first customer (excluding depot) to end: make all arrival time of all customers as early as possible
+     *
+     * O(n) operation - expensive, should only run once for post-optimization,
+     * should not include in the local search algorithm.
+     */
+    void optimizeRoute() {
+        // Make all arrival time of all customers (include the depot) as late as possible
+        arrivalTimes.set(arrivalTimes.size() - 1, (double) depot.dueTime);
+        for (int i = arrivalTimes.size() - 2; i >= 0; i--) {
+            Node customer = routedPath.get(i);
+            // latest arrival time at customer so that the following customer can be served no later than its current starting service time
+            double latestArrivalTime = getStartingServiceTimeAt(i + 1) - dataModel.getTravelTime(customer, routedPath.get(i + 1)) - customer.serviceTime;
+            // ensure that the route remains valid (no customer is served after time window ends)
+            arrivalTimes.set(i, Math.min(customer.dueTime, latestArrivalTime));
+        }
+
+        for (int i = 1; i < arrivalTimes.size(); i++) {
+            Node prevCustomer = routedPath.get(i - 1);
+            Node customer = routedPath.get(i);
+            arrivalTimes.set(i, getStartingServiceTimeAt(i - 1) + prevCustomer.serviceTime + dataModel.getTravelTime(prevCustomer, customer));
+        }
+        assert isValidRoute();
+    }
+
+    boolean isValidRoute() {
+        for (int i = 0; i < routedPath.size() - 1; i++) {
+            Node customer = routedPath.get(i);
+            if (arrivalTimes.get(i) > customer.dueTime
+                    || getStartingServiceTimeAt(i) + customer.serviceTime + dataModel.getTravelTime(customer, routedPath.get(i + 1)) != arrivalTimes.get(i + 1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Return the starting service time at customer with index p in the routedPath
      */
     double getStartingServiceTimeAt(int p) {
