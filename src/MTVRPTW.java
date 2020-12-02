@@ -5,8 +5,6 @@ import java.util.logging.Logger;
 
 public class MTVRPTW {
 
-    int numClustersThreshold;
-
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
     /**
@@ -21,22 +19,16 @@ public class MTVRPTW {
      *      2. Improvement phase
      *
      */
-    public void runAlgorithm() {
-        String inputDirectory = System.getProperty("user.dir") + "/input/";
-        logger.info("Reading input from " + inputDirectory);
-        DataModel dataModel = new DataModel();  // read from input (add parameters later)
-        readInputParameters(dataModel, inputDirectory);
-        dataModel.readInputAndPopulateData();
-
+    public void runClusterRouteMergeAlgorithm(DataModel dataModel) {
         // Step 1: try different # of clusters
         List<List<Route>> solutions = new ArrayList<>();
 
         // Step 2-9 (currently 2-7): Initial solution construction
-        for (int numClusters = 1; numClusters <= numClustersThreshold; numClusters++) {
+        for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
             logger.info("Try " + numClusters + " clusters");
-            VehicleRouting vehicleRouting = new VehicleRouting(dataModel);  // also pass dataModel
+            ClusterRouting clusterRouting = new ClusterRouting(dataModel);  // also pass dataModel
             // Do 3 steps: cluster, parallel construction, merge
-            List<Route> routes = vehicleRouting.initialConstruction(numClusters);
+            List<Route> routes = clusterRouting.initialConstruction(numClusters);
             solutions.add(routes);
         }
     }
@@ -46,12 +38,12 @@ public class MTVRPTW {
      *      threshold of # clusters
      *      vehicle capacity
      */
-    public void readInputParameters(DataModel dataModel, String inputDirectory) {
+    public static void readInputParameters(DataModel dataModel, String inputDirectory) {
         try {
             File inputParametersFile = new File( inputDirectory + "/parameters.txt");
             Scanner inputParameter = new Scanner(inputParametersFile);
             dataModel.setInputTestFolder(inputDirectory + "/" + inputParameter.nextLine());
-            this.numClustersThreshold = inputParameter.nextInt();
+            dataModel.setNumClustersThreshold(inputParameter.nextInt());
             dataModel.setVehicleCapacity(inputParameter.nextInt());
             dataModel.setAlphaParameters(inputParameter.nextDouble(), inputParameter.nextDouble());
             dataModel.setPNeighbourhoodSize(inputParameter.nextInt());
@@ -63,6 +55,11 @@ public class MTVRPTW {
 
     public static void main(String[] args) {
         MTVRPTW mtvrptw = new MTVRPTW();
-        mtvrptw.runAlgorithm();
+        String inputDirectory = System.getProperty("user.dir") + "/input/";
+        logger.info("Reading input from " + inputDirectory);
+        DataModel dataModel = new DataModel();  // read from input (add parameters later)
+        readInputParameters(dataModel, inputDirectory);
+        dataModel.readInputAndPopulateData();
+        mtvrptw.runClusterRouteMergeAlgorithm(dataModel);
     }
 }

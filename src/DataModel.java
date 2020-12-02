@@ -16,6 +16,7 @@ public class DataModel {
     int numNodes = 101;  // depot + customers
     double alpha1, alpha2;  // parameters used in parallel construction heuristic - I1 insertion heuristic (Solomon, 1987)
     int pNeighbourhoodSize;
+    int numClustersThreshold;
     String inputTestFolder;
 
     public DataModel() {
@@ -81,6 +82,10 @@ public class DataModel {
 
     public void setInputTestFolder(String inputTestFolder) {
         this.inputTestFolder = inputTestFolder;
+    }
+
+    public void setNumClustersThreshold(int numClustersThreshold) {
+        this.numClustersThreshold = numClustersThreshold;
     }
 
     public void setVehicleCapacity(int capacity) {

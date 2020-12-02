@@ -4,15 +4,15 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * This is "Solution" in paper, but we called it VehicleRouting to make it clear that
- * while the algorithm is running, this will just be an un-finished vehicle routing,
- * not an actual solution.
+ * This is "Solution" in paper, but we called it ClusterRouting to make it clear that
+ * while the algorithm is running, this will just be one of the solutions,
+ * not the final solution.
  */
-public class VehicleRouting {
+public class ClusterRouting {
     DataModel dataModel;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
-    public VehicleRouting(DataModel dataModel) {
+    public ClusterRouting(DataModel dataModel) {
         this.dataModel = dataModel;
     }
 
@@ -344,40 +344,4 @@ public class VehicleRouting {
         return dataModel.alpha1 * c11 + dataModel.alpha2 * c12;
     }
 
-}
-
-class CostPositionPair {
-    double cost;
-    int position;
-    public CostPositionPair(double c, int p) {
-        cost = c;
-        position = p;
-    }
-}
-
-class NodePositionPair {
-    Node node;
-    int position;
-    public NodePositionPair(Node n, int p) {
-        node = n;
-        position = p;
-    }
-}
-
-class RoutesOptimizationResult {
-    List<Route> routes;
-    Collection<Node> unRoutedCustomers;
-    public RoutesOptimizationResult(List<Route> routes, Collection<Node> unRoutedCustomers) {
-        this.routes = routes;
-        this.unRoutedCustomers = unRoutedCustomers;
-    }
-}
-
-class RoutePositionPair {
-    Route route;
-    int position;
-    public RoutePositionPair(Route route, int p) {
-        this.route = route;
-        position = p;
-    }
 }
