@@ -180,7 +180,7 @@ public class Route {
     double getPushForwardTimeAtNextCustomer(Node u, int p) {
         Node m = routedPath.get(p - 1), n = routedPath.get(p);
         double arrivalTimeCustomerU = getStartingServiceTimeAt(p - 1) + m.serviceTime + dataModel.getTravelTime(m, u);
-        assert arrivalTimeCustomerU > u.dueTime;  // this time feasibility condition should be checked before
+        assert !Utils.greaterThan(arrivalTimeCustomerU, u.dueTime);  // this time feasibility condition should be checked before
         double serviceTimeCustomerU = Math.max(arrivalTimeCustomerU, u.readyTime);
         double oldServiceTimeCustomerN = getStartingServiceTimeAt(p);
         double newArrivalTimeCustomerN = serviceTimeCustomerU + u.serviceTime + dataModel.getTravelTime(u, n);
@@ -223,8 +223,9 @@ public class Route {
     boolean isValidRoute() {
         for (int i = 0; i < routedPath.size() - 1; i++) {
             Node customer = routedPath.get(i);
-            if (arrivalTimes.get(i) > customer.dueTime
-                    || getStartingServiceTimeAt(i) + customer.serviceTime + dataModel.getTravelTime(customer, routedPath.get(i + 1)) != arrivalTimes.get(i + 1)) {
+            // Use double comparison with epsilon to tackle rounding
+            if (Utils.greaterThan(arrivalTimes.get(i), customer.dueTime)
+                    || !Utils.equals(getStartingServiceTimeAt(i) + customer.serviceTime + dataModel.getTravelTime(customer, routedPath.get(i + 1)), arrivalTimes.get(i + 1))) {
                 return false;
             }
         }
