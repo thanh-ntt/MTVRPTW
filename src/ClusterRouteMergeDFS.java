@@ -8,15 +8,15 @@ import java.util.stream.IntStream;
  * while the algorithm is running, this will just be one of the solutions,
  * not the final solution.
  */
-public class ClusterRouting {
+public class ClusterRouteMergeDFS {
     DataModel dataModel;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
-    public ClusterRouting(DataModel dataModel) {
+    public ClusterRouteMergeDFS(DataModel dataModel) {
         this.dataModel = dataModel;
     }
 
-    public List<Route> run(int numClusters) {
+    public List<Route> initialConstruction(int numClusters) {
         List<List<Node>> clusters = constructClusters(numClusters);
 
         // Apply parallel construction: construct routes for each cluster separately
@@ -53,17 +53,17 @@ public class ClusterRouting {
     List<List<Node>> constructClusters(int numClusters) {
         List<List<Node>> clusters = new ArrayList<>();
         // 3.1.1 step 2: estimate ideal # vehicles needed in each cluster
-//        double averageDemandPerCluster = 1.0 * dataModel.getTotalDemands() / numClusters;
-//        int vehicleCapacity = dataModel.getVehicleCapacity();
-//        int idealNumVehicles = (int) Math.ceil(averageDemandPerCluster / vehicleCapacity);
-//        int idealDemandPerCluster = idealNumVehicles * vehicleCapacity;
-        int idealDemandPerCluster = dataModel.getTotalDemands() / numClusters;
+        double averageDemandPerCluster = 1.0 * dataModel.getTotalDemands() / numClusters;
+        int vehicleCapacity = dataModel.getVehicleCapacity();
+        int idealNumVehicles = (int) Math.ceil(averageDemandPerCluster / vehicleCapacity);
+        int idealDemandPerCluster = idealNumVehicles * vehicleCapacity;
+//        int idealDemandPerCluster = dataModel.getTotalDemands() / numClusters;
 
-                // 3.1.1 step 3: distribute demand nodes to clusters
+        // 3.1.1 step 3: distribute demand nodes to clusters
         // Priority Queue ordered by latest service time
         List<Node> orderedCustomers = dataModel.getDemandNodes();
-//        orderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
-        orderedCustomers.sort(Comparator.comparingDouble(a -> dataModel.getDistanceFromDepot(a)));
+        // Rank demand nodes in increasing order of latest service time
+        orderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
         Queue<Node> queue = new LinkedList<>(orderedCustomers);
 
         // Step 3: distribute the (sorted) demand nodes to the numClusters ordered clusters
@@ -74,7 +74,6 @@ public class ClusterRouting {
                 curCluster.addAll(queue);
                 queue.clear();
             }
-            assert !curCluster.isEmpty();
 
             int clusterDemand = 0;
             while (!queue.isEmpty()) {
@@ -88,6 +87,7 @@ public class ClusterRouting {
                 clusterDemand += customer.demand;
             }
 
+            assert !curCluster.isEmpty();
             clusters.add(curCluster);
         }
 
