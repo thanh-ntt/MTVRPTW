@@ -74,7 +74,6 @@ public class ClusterRouting {
                 curCluster.addAll(queue);
                 queue.clear();
             }
-            assert !curCluster.isEmpty();
 
             int clusterDemand = 0;
             while (!queue.isEmpty()) {
@@ -88,6 +87,7 @@ public class ClusterRouting {
                 clusterDemand += customer.demand;
             }
 
+            assert !curCluster.isEmpty();
             clusters.add(curCluster);
         }
 
