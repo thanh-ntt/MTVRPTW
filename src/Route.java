@@ -18,7 +18,15 @@ public class Route {
         depot = dataModel.getDepot();
         vehicleLoadInCurTrip = new ArrayList<>(Arrays.asList(0, seed.demand, seed.demand));
         routedPath = new ArrayList<>(Arrays.asList(depot, seed, depot));
-        initializeArrivalTimes(routedPath);
+        initializeArrivalTimes(routedPath, routedPath.get(0).readyTime);
+    }
+
+    public Route(DataModel dataModel, Node seed, double departureTimeFromDepot) {
+        this.dataModel = dataModel;
+        depot = dataModel.getDepot();
+        vehicleLoadInCurTrip = new ArrayList<>(Arrays.asList(0, seed.demand, seed.demand));
+        routedPath = new ArrayList<>(Arrays.asList(depot, seed, depot));
+        initializeArrivalTimes(routedPath, departureTimeFromDepot);
     }
 
     /**
@@ -30,7 +38,7 @@ public class Route {
         depot = dataModel.getDepot();
         routedPath = new ArrayList<>(l.routedPath);
         routedPath.addAll(m.routedPath.subList(1, m.routedPath.size()));  // skip the first depot in m
-        initializeArrivalTimes(routedPath);
+        initializeArrivalTimes(routedPath, routedPath.get(0).readyTime);
 
         // Initialize vehicle load in each trip
         vehicleLoadInCurTrip = new ArrayList<>(Collections.nCopies(routedPath.size(), 0));
@@ -55,12 +63,12 @@ public class Route {
      * It also checks (assert) for time feasibility of the path / route
      * (arrival time at each customer is before due time).
      */
-    void initializeArrivalTimes(List<Node> routedPath) {
+    void initializeArrivalTimes(List<Node> routedPath, double departureTimeFromDepot) {
         arrivalTimes = new ArrayList<>();
         for (int i = 0; i < routedPath.size(); i++) {
             Double arrivalTime = null;
             if (i == 0) {
-                arrivalTime = (double) routedPath.get(0).readyTime;  // Depot
+                arrivalTime = departureTimeFromDepot;  // Depot
             } else {
                 double previousCustomerServiceTime = Math.max(arrivalTimes.get(i - 1), routedPath.get(i - 1).readyTime);
                 // arrival time = starting service time at previous node + service time + time travel
@@ -237,6 +245,14 @@ public class Route {
      */
     double getStartingServiceTimeAt(int p) {
         return Math.max(arrivalTimes.get(p), routedPath.get(p).readyTime);
+    }
+
+    double getLastestArrivalTimeAtDepot() {
+        return getArrivalTimeAt(arrivalTimes.size() - 1);
+    }
+
+    double getArrivalTimeAt(int p) {
+        return arrivalTimes.get(p);
     }
 
     public int getLength() {

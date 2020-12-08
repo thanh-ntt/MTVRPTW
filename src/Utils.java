@@ -10,6 +10,36 @@ public class Utils {
         return sb.toString();
     }
 
+    public static boolean isValidSolution(DataModel dataModel, List<Route> routes) {
+        Set<Node> unServedCustomers = new HashSet<>(dataModel.getDemandNodes());
+        for (Route route : routes) {
+            for (Node c : route.routedPath) {
+                if (c != dataModel.getDepot() && !unServedCustomers.remove(c)) return false;
+            }
+        }
+        return unServedCustomers.isEmpty();
+    }
+
+    public static boolean isParallelRoutesValid(DataModel dataModel, List<List<Route>> parallelRoutes) {
+        Set<Node> unServedCustomers = new HashSet<>(dataModel.getDemandNodes());
+        for (List<Route> routes : parallelRoutes) {
+            for (Route route : routes) {
+                for (Node c : route.routedPath) {
+                    if (c != dataModel.getDepot() && !unServedCustomers.remove(c)) return false;
+                }
+            }
+        }
+        return unServedCustomers.isEmpty();
+    }
+
+    public static Set<Node> getRoutedCustomers(List<Route> routes) {
+        Set<Node> routedCustomers = new HashSet<>();
+        for (Route route : routes)
+            routedCustomers.addAll(route.routedPath);
+        routedCustomers.remove(routes.get(0).routedPath.get(0));  // remove depot
+        return routedCustomers;
+    }
+
     /**
      * Returns true if two doubles are considered equal.  Tests if the absolute
      * difference between two doubles has a difference less then .00001.   This
@@ -55,6 +85,13 @@ public class Utils {
      */
     public static boolean greaterThan(double a, double b){
         return greaterThan(a, b, EPSILON);
+    }
+
+    public static List<Route> getBestSolution(List<List<Route>> solutions) {
+        List<Route> bestSolution = null;
+        for (List<Route> solution : solutions)
+            if (bestSolution == null || solution.size() < bestSolution.size()) bestSolution = solution;
+        return bestSolution;
     }
 
 

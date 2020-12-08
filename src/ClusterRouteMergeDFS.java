@@ -19,27 +19,48 @@ public class ClusterRouteMergeDFS {
     public List<Route> initialConstruction(int numClusters) {
         List<List<Node>> clusters = constructClusters(numClusters);
 
-        // Apply parallel construction: construct routes for each cluster separately
-        // TODO: implement route-merge-improve in depth-first order (instead of linear)
-        List<List<Route>> parallelRoutes = new ArrayList<>();
-        for (int i = 0; i < clusters.size(); i++) {
-            List<Node> cluster = clusters.get(i);
-            List<Route> constructedRoute = constructRoute(cluster);
-            // from the second cluster onward, for each route (vehicle), we set the time to leave depot to be as late as possible
-            if (i > 0) {
-                constructedRoute.forEach(route -> route.optimizeRoute());
-            }
-            parallelRoutes.add(constructedRoute);
-        }
-        logger.info("Parallel construction, # vehicles "
-                + parallelRoutes.stream().mapToInt(list -> list.size()).sum()
-                + ": "
-                + Arrays.toString(parallelRoutes.stream().map(list -> list.size()).collect(Collectors.toList()).toArray()));
+        // route-merge-improve in depth-first order
+        List<List<Route>> solutions = new ArrayList<>();
+        dfs(clusters, solutions, new ArrayList<>(), Collections.singletonList(0.0), dataModel.getDemandNodes(), 0, numClusters);
 
-        // Apply the merging approach (to reduce # vehicles needed)
-        List<Route> mergedRoute = mergeRoutes(parallelRoutes);
-        logger.info("Merge routes, # vehicles: " + mergedRoute.size());
-        return mergedRoute;
+        List<Route> bestSolution = Utils.getBestSolution(solutions);
+        logger.info("DFS solution, # vehicles: " + (bestSolution == null ? "-1" : bestSolution.size()));
+        return bestSolution;
+    }
+
+    void dfs(List<List<Node>> clusters, List<List<Route>> solutions, List<List<Route>> parallelRoutes,
+             List<Double> departureTimes, Set<Node> unRoutedCustomers, int i, int numClusters) {
+        // TODO: check back, we need deep copy, not shallow copies
+        if (i == numClusters) {
+            // Apply the merging approach (to reduce # vehicles needed)
+            assert Utils.isParallelRoutesValid(dataModel, parallelRoutes);
+            List<Route> mergedRoute = mergeRoutes(parallelRoutes);
+            assert Utils.isValidSolution(dataModel, mergedRoute);
+            solutions.add(mergedRoute);
+        } else {
+            for (double departureTime : departureTimes) {
+                List<Route> routedCluster = constructRoute(clusters.get(i), departureTime);
+
+                Set<Node> newlyRoutedCustomers = Utils.getRoutedCustomers(routedCluster);
+                unRoutedCustomers.removeAll(newlyRoutedCustomers);
+                parallelRoutes.add(routedCluster);
+
+                dfs(clusters, solutions, parallelRoutes, selectDepartureTimes(routedCluster, unRoutedCustomers), unRoutedCustomers, i + 1, numClusters);
+
+                unRoutedCustomers.addAll(newlyRoutedCustomers);
+                parallelRoutes.remove(parallelRoutes.size() - 1);
+            }
+        }
+    }
+
+    List<Double> selectDepartureTimes(List<Route> routes, Set<Node> unRoutedCustomers) {
+        // TODO: select based on "some" mechanism
+        List<Double> departureTimes = new ArrayList<>();
+        routes.forEach(route -> {
+            departureTimes.add(route.getLastestArrivalTimeAtDepot() + dataModel.getDepot().serviceTime);
+        });
+        double latestDepartureTime = dataModel.getLatestDepartureTime(unRoutedCustomers);
+        return departureTimes.stream().filter(t -> !Utils.greaterThan(t, latestDepartureTime)).collect(Collectors.toList());
     }
 
     /**
@@ -60,7 +81,7 @@ public class ClusterRouteMergeDFS {
 
         // 3.1.1 step 3: distribute demand nodes to clusters
         // Priority Queue ordered by latest service time
-        List<Node> orderedCustomers = dataModel.getDemandNodes();
+        List<Node> orderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
         // Rank demand nodes in increasing order of latest service time
         orderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
         Queue<Node> queue = new LinkedList<>(orderedCustomers);
@@ -104,12 +125,12 @@ public class ClusterRouteMergeDFS {
      *      (*) "best" is defined in paper.
      * @return a list of routes corresponding to each vehicles
      */
-    List<Route> constructRoute(List<Node> cluster) {
+    List<Route> constructRoute(List<Node> cluster, double departureTimeFromDepot) {
         List<Node> orderedCustomers = new ArrayList<>(cluster);
         // Step 2: rank the demand nodes in decreasing order of travel time from depot
         orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
 
-        List<Route> bestRoutes = runI1InsertionHeuristic(orderedCustomers);
+        List<Route> bestRoutes = runI1InsertionHeuristic(orderedCustomers, departureTimeFromDepot);
 
         // Step 4, 5: try to reduce # vehicles needed
         int targetedNumVehicles = bestRoutes.size() - 1;
@@ -131,7 +152,7 @@ public class ClusterRouteMergeDFS {
      * @param orderedCustomers customers are ordered (decreasing) by geographically distance from depot
      * @return a feasible solution that serves all customers
      */
-    List<Route> runI1InsertionHeuristic(List<Node> orderedCustomers) {
+    List<Route> runI1InsertionHeuristic(List<Node> orderedCustomers, double departureTimeFromDepot) {
         List<Node> unRoutedCustomers = new ArrayList<>(orderedCustomers);
         // TODO: try to order by lowest allowed starting time for service, suggested in Solomon 1987
         List<Route> routes = new ArrayList<>();
@@ -140,7 +161,7 @@ public class ClusterRouteMergeDFS {
             // get the furthest (geographically) un-routed customer from depot
             Node seed = unRoutedCustomers.remove(0);
             // Initialize the route to (depot, seed, depot)
-            Route route = new Route(dataModel, seed);
+            Route route = new Route(dataModel, seed, departureTimeFromDepot);
             NodePositionPair bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers);
             while (bestCustomerAndPosition != null) {  // loop until infeasible to insert any more customers
                 Node bestCustomer = bestCustomerAndPosition.node;
@@ -163,11 +184,13 @@ public class ClusterRouteMergeDFS {
      *  1. Select m demand nodes (customers) as seed points, initialize m routes at once.
      *  2. Insert the remaining un-routed demand nodes (customers) into their best feasible positions of m routes.
      *
-     * @param orderedCustomers customers are ordered (decreasing) by geographically distance from depot
+     * @param inputOrderedCustomers customers are ordered (decreasing) by geographically distance from depot
      * @param m targeted number of vehicles
      * @return
      */
-    RoutesOptimizationResult optimizeNumVehicles(List<Node> orderedCustomers, int m) {
+    RoutesOptimizationResult optimizeNumVehicles(List<Node> inputOrderedCustomers, int m) {
+        // Copy to avoid modifying the original list
+        List<Node> orderedCustomers = new ArrayList<>(inputOrderedCustomers);
         // Step 4: select m furthest demand nodes as seed points, initialize m routes at once
         List<Route> routes = orderedCustomers.subList(0, m).stream()
                 .map(c -> new Route(dataModel, c)).collect(Collectors.toList());
@@ -237,8 +260,8 @@ public class ClusterRouteMergeDFS {
         for (int i = 0; i < parallelRoutes.size() - 1; i++) {  // if there is only 1 cluster, return the cluster immediately
             List<Route> nextK = new ArrayList<>(parallelRoutes.get(i + 1));
 
-            // Sort routes in Ki in increasing order of the latest arrival time at the depot (equals to starting service time at last node - depot)
-            curK.sort(Comparator.comparingDouble(a -> a.getStartingServiceTimeAt(a.getLength() - 1)));
+            // Sort routes in Ki in increasing order of the latest arrival time at the depot
+            curK.sort(Comparator.comparingDouble(Route::getLastestArrivalTimeAtDepot));
 
             // Sort routes in K(i+1) in increasing order of the starting service time at the first customer
             nextK.sort(Comparator.comparingDouble(a -> a.getStartingServiceTimeAt(1)));

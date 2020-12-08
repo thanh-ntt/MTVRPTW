@@ -26,9 +26,7 @@ public class ClusterRouting {
             List<Node> cluster = clusters.get(i);
             List<Route> constructedRoute = constructRoute(cluster);
             // from the second cluster onward, for each route (vehicle), we set the time to leave depot to be as late as possible
-            if (i > 0) {
-                constructedRoute.forEach(route -> route.optimizeRoute());
-            }
+            if (i > 0) constructedRoute.forEach(route -> route.optimizeRoute());
             parallelRoutes.add(constructedRoute);
         }
         logger.info("Parallel construction, # vehicles "
@@ -37,7 +35,9 @@ public class ClusterRouting {
                 + Arrays.toString(parallelRoutes.stream().map(list -> list.size()).collect(Collectors.toList()).toArray()));
 
         // Apply the merging approach (to reduce # vehicles needed)
+        assert Utils.isParallelRoutesValid(dataModel, parallelRoutes);
         List<Route> mergedRoute = mergeRoutes(parallelRoutes);
+        assert Utils.isValidSolution(dataModel, mergedRoute);
         logger.info("Merge routes, # vehicles: " + mergedRoute.size());
         return mergedRoute;
     }
@@ -61,7 +61,7 @@ public class ClusterRouting {
 
                 // 3.1.1 step 3: distribute demand nodes to clusters
         // Priority Queue ordered by latest service time
-        List<Node> orderedCustomers = dataModel.getDemandNodes();
+        List<Node> orderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
 //        orderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
         orderedCustomers.sort(Comparator.comparingDouble(a -> dataModel.getDistanceFromDepot(a)));
         Queue<Node> queue = new LinkedList<>(orderedCustomers);
@@ -164,11 +164,13 @@ public class ClusterRouting {
      *  1. Select m demand nodes (customers) as seed points, initialize m routes at once.
      *  2. Insert the remaining un-routed demand nodes (customers) into their best feasible positions of m routes.
      *
-     * @param orderedCustomers customers are ordered (decreasing) by geographically distance from depot
+     * @param inputOrderedCustomers customers are ordered (decreasing) by geographically distance from depot
      * @param m targeted number of vehicles
      * @return
      */
-    RoutesOptimizationResult optimizeNumVehicles(List<Node> orderedCustomers, int m) {
+    RoutesOptimizationResult optimizeNumVehicles(List<Node> inputOrderedCustomers, int m) {
+        // Copy to avoid modifying the original list
+        List<Node> orderedCustomers = new ArrayList<>(inputOrderedCustomers);
         // Step 4: select m furthest demand nodes as seed points, initialize m routes at once
         List<Route> routes = orderedCustomers.subList(0, m).stream()
                 .map(c -> new Route(dataModel, c)).collect(Collectors.toList());

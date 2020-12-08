@@ -1,8 +1,6 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.IntStream;
 
 public class DataModel {
@@ -10,6 +8,7 @@ public class DataModel {
     int[][] timeWindows;
     int[] serviceTimes;
     int[] demands;
+    double[] latestDepartureTimes;  // latest time the vehicle can leave the depot and still serve each customer
     int vehicleCapacity;
     Node[] nodes;  // depot + all customers
     int numCustomers = 100;
@@ -19,11 +18,14 @@ public class DataModel {
     int numClustersThreshold;
     String inputTestFolder;
 
+    // TODO: Move some methods to Utils class
+
     public DataModel() {
         distanceTable = new double[numNodes][numNodes];
         timeWindows = new int[numNodes][2];
         serviceTimes = new int[numNodes];
         demands = new int[numNodes];
+        latestDepartureTimes = new double[numNodes];
     }
 
     void readInputAndPopulateData() {
@@ -35,6 +37,7 @@ public class DataModel {
         nodes = new Node[numNodes];
         for (int i = 0; i < numNodes; i++) {
             nodes[i] = new Node(i, demands[i], timeWindows[i][0], timeWindows[i][1], serviceTimes[i]);
+            latestDepartureTimes[i] = nodes[i].dueTime - getDistanceFromDepot(nodes[i]);
         }
     }
 
@@ -110,8 +113,8 @@ public class DataModel {
         return vehicleCapacity;
     }
 
-    public List<Node> getDemandNodes() {
-        List<Node> demandNodes = new ArrayList<>();
+    public Set<Node> getDemandNodes() {
+        Set<Node> demandNodes = new HashSet<>();
         // Skip depot
         for (int i = 1; i < numNodes; i++)
             demandNodes.add(nodes[i]);
@@ -120,6 +123,14 @@ public class DataModel {
 
     public double getDistanceFromDepot(Node node) {
         return distanceTable[node.id][0];
+    }
+
+    public double getLatestDepartureTimeFor(Node node) {
+        return latestDepartureTimes[node.id];
+    }
+
+    public double getLatestDepartureTime(Set<Node> unRoutedCustomers) {
+        return unRoutedCustomers.stream().mapToDouble(this::getLatestDepartureTimeFor).min().orElseGet(() -> -1.0);
     }
 
     public double getTravelTime(Node source, Node destination) {

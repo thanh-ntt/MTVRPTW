@@ -56,9 +56,12 @@ public class MTVRPTW {
             logger.info("Try " + numClusters + " clusters");
             ClusterRouteMergeDFS clusterRouteMergeDFS = new ClusterRouteMergeDFS(dataModel);  // also pass dataModel
             // Do 3 steps: cluster, parallel construction, merge
-            List<Route> routes = clusterRouteMergeDFS.initialConstruction(numClusters);
-            solutions.add(routes);
+            List<Route> solution = clusterRouteMergeDFS.initialConstruction(numClusters);
+            if (solution != null) solutions.add(solution);
         }
+        List<Route> finalSolution = Utils.getBestSolution(solutions);
+        logger.info("Final solution, # vehicles: " + (finalSolution == null ? "-1" : finalSolution.size()));
+        assert Utils.isValidSolution(dataModel, finalSolution);
     }
 
     /**
@@ -88,6 +91,7 @@ public class MTVRPTW {
         DataModel dataModel = new DataModel();  // read from input (add parameters later)
         readInputParameters(dataModel, inputDirectory);
         dataModel.readInputAndPopulateData();
+        mtvrptw.runClusterRouteMergeAlgorithm(dataModel);
         mtvrptw.runChangsAlgorithm(dataModel);
     }
 }
