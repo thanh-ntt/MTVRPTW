@@ -34,13 +34,14 @@ public class ChangsAlgorithm {
         if (i < numClusters) {
             for (double departureTime : departureTimes) {
                 // Construct a solution for the current sub-MTVRPTW
-                List<Route> routedCluster = constructRoute(clusters.get(i), departureTime);
+                List<Route> routedCluster = constructRoutesParallel(clusters.get(i), departureTime);
                 // Remove the newly routed customers from list of un-routed
                 Set<Node> newlyRoutedCustomers = Utils.getRoutedCustomers(routedCluster);
                 unRoutedCustomers.removeAll(newlyRoutedCustomers);
                 // Merged Ki and K(i+1)
                 List<Route> curMergedSolution = mergeRoutes(prevMergedSolution, routedCluster);
-                // TODO: apply improvement method for curMergedSolution
+                // Apply improvement method for curMergedSolution
+                curMergedSolution = runSolutionImprovement(curMergedSolution);
                 // Get the list of possible departure times (from depot) for the next cluster
                 List<Double> nextDepartureTimes = selectDepartureTimes(routedCluster, unRoutedCustomers);
                 // Continue DFS route-merge-improve
@@ -125,7 +126,7 @@ public class ChangsAlgorithm {
     }
 
     /**
-     * Construct the route for a cluster.
+     * Construct the routes for a cluster.
      * The objective is to minimize the number of vehicles needed.
      * Solomon's sequential insertion heuristic (I1):
      *      1. Initialize a route with seed
@@ -135,7 +136,7 @@ public class ChangsAlgorithm {
      *      (*) "best" is defined in paper.
      * @return a list of routes corresponding to each vehicles
      */
-    List<Route> constructRoute(List<Node> cluster, double departureTimeFromDepot) {
+    List<Route> constructRoutesParallel(List<Node> cluster, double departureTimeFromDepot) {
         List<Node> orderedCustomers = new ArrayList<>(cluster);
         // Step 2: rank the demand nodes in decreasing order of travel time from depot
         orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
@@ -375,6 +376,46 @@ public class ChangsAlgorithm {
         double c12 = route.getPushForwardTimeAtNextCustomer(u, p);
         // I1 insertion heuristic - Solomon, 1987
         return dataModel.alpha1 * c11 + dataModel.alpha2 * c12;
+    }
+
+    /**
+     * Apply all the techniques in solution improvement phase described in Chang's paper.
+     *
+     * @param solution the current solution
+     * @return an equally good or better solution
+     */
+    List<Route> runSolutionImprovement(List<Route> solution) {
+        List<Route> improvedSolution = runVehicleNumberReduction(solution);
+        return improvedSolution;
+    }
+
+    /**
+     * Simple procedure to reduce the number of needed vehicles.
+     *
+     * @param solution
+     * @return
+     */
+    List<Route> runVehicleNumberReduction(List<Route> solution) {
+        // Step 2: un-route the routes with # demand nodes less than threshold
+        List<Route> shortRoutes = solution.stream().filter(r -> r.getNumDemandNodes() < dataModel.getDeltaThreshold()).collect(Collectors.toList());
+        List<Node> unRoutedCustomers = new ArrayList<>();
+        shortRoutes.forEach(r -> unRoutedCustomers.addAll(r.getDemandNodes()));
+
+        // Step 3: apply parallel construction method to insert the un-routed demand nodes
+        List<Route> reRoutedShortRoutes = constructRoutesParallel(unRoutedCustomers, 0);  // set departure time to 0?
+
+        // Construct the new solution
+        List<Route> newSolution = new ArrayList<>(solution);
+        newSolution.removeAll(shortRoutes);
+        newSolution.addAll(reRoutedShortRoutes);
+
+        if (newSolution.size() > solution.size()) return solution;  // worsening move, discard
+        else if (newSolution.size() < solution.size()) return newSolution;  // improving move, take
+        else {  // check # of routes with # demand nodes less than threshold
+            List<Route> newShortRoutes = newSolution.stream().filter(r -> r.getNumDemandNodes() < dataModel.getDeltaThreshold()).collect(Collectors.toList());
+            if (newShortRoutes.size() < shortRoutes.size()) return newSolution;
+            else return solution;
+        }
     }
 
 }

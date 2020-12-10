@@ -16,6 +16,7 @@ public class DataModel {
     double alpha1, alpha2;  // parameters used in parallel construction heuristic - I1 insertion heuristic (Solomon, 1987)
     int pNeighbourhoodSize;
     int numClustersThreshold;
+    int deltaThreshold;
     String inputTestFolder;
 
     // TODO: Move some methods to Utils class
@@ -106,6 +107,15 @@ public class DataModel {
     public void setPNeighbourhoodSize(int size) {
         assert size >= 1;
         pNeighbourhoodSize = size;
+    }
+
+    public void setDeltaThreshold(int threshold) {
+        assert threshold >= 1;
+        deltaThreshold = threshold;
+    }
+
+    public int getDeltaThreshold() {
+        return this.deltaThreshold;
     }
 
     public int getVehicleCapacity() {

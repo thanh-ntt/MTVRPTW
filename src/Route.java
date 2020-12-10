@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Route {
     DataModel dataModel;
@@ -257,6 +258,14 @@ public class Route {
 
     public int getLength() {
         return routedPath.size();
+    }
+
+    public int getNumDemandNodes() {
+        return (int) routedPath.stream().filter(c -> c != depot).count();
+    }
+
+    public List<Node> getDemandNodes() {
+        return routedPath.stream().filter(c -> c != depot).collect(Collectors.toList());
     }
 
     @Override

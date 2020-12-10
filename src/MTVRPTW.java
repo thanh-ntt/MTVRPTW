@@ -89,6 +89,7 @@ public class MTVRPTW {
             dataModel.setVehicleCapacity(inputParameter.nextInt());
             dataModel.setAlphaParameters(inputParameter.nextDouble(), inputParameter.nextDouble());
             dataModel.setPNeighbourhoodSize(inputParameter.nextInt());
+            dataModel.setDeltaThreshold(inputParameter.nextInt());
         } catch (FileNotFoundException e) {
             System.out.println("File not found");
             e.printStackTrace();
