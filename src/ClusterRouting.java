@@ -29,16 +29,16 @@ public class ClusterRouting {
             if (i > 0) constructedRoute.forEach(route -> route.optimizeRoute());
             parallelRoutes.add(constructedRoute);
         }
-        logger.info("Parallel construction, # vehicles "
-                + parallelRoutes.stream().mapToInt(list -> list.size()).sum()
-                + ": "
-                + Arrays.toString(parallelRoutes.stream().map(list -> list.size()).collect(Collectors.toList()).toArray()));
+//        logger.info("Parallel construction, # vehicles "
+//                + parallelRoutes.stream().mapToInt(list -> list.size()).sum()
+//                + ": "
+//                + Arrays.toString(parallelRoutes.stream().map(list -> list.size()).collect(Collectors.toList()).toArray()));
 
         // Apply the merging approach (to reduce # vehicles needed)
         assert Utils.isParallelRoutesValid(dataModel, parallelRoutes);
         List<Route> mergedRoute = mergeRoutes(parallelRoutes);
         assert Utils.isValidSolution(dataModel, mergedRoute);
-        logger.info("Merge routes, # vehicles: " + mergedRoute.size());
+//        logger.info("Merge routes, # vehicles: " + mergedRoute.size());
         return mergedRoute;
     }
 

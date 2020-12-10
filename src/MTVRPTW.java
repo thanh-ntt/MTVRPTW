@@ -18,17 +18,24 @@ public class MTVRPTW {
      *
      */
     public void runClusterRouteMergeAlgorithm(DataModel dataModel) {
+        logger.info("Start cluster-route-merge algorithm");
+        long startTime = System.nanoTime();
         List<List<Route>> solutions = new ArrayList<>();
 
         // Try different # of clusters
         for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
             // Cluster - Route - Merge algorithm
-            logger.info("Try " + numClusters + " clusters");
+//            logger.info("Try " + numClusters + " clusters");
             ClusterRouting clusterRouting = new ClusterRouting(dataModel);  // also pass dataModel
             // Do 3 steps: cluster, parallel construction, merge
             List<Route> routes = clusterRouting.run(numClusters);
             solutions.add(routes);
         }
+
+        List<Route> finalSolution = Utils.getBestSolution(solutions);
+        assert Utils.isValidSolution(dataModel, finalSolution);
+        logger.info(Utils.getSolutionStats(finalSolution));
+        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0);
     }
 
     /**
@@ -48,20 +55,24 @@ public class MTVRPTW {
      *
      */
     public void runChangsAlgorithm(DataModel dataModel) {
+        logger.info("Start Chang's algorithm");
+        long startTime = System.nanoTime();
         // Step 1: try different # of clusters
         List<List<Route>> solutions = new ArrayList<>();
 
         // Step 2-9 (currently 2-7): Initial solution construction
         for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
-            logger.info("Try " + numClusters + " clusters");
+//            logger.info("Try " + numClusters + " clusters");
             ClusterRouteMergeDFS clusterRouteMergeDFS = new ClusterRouteMergeDFS(dataModel);  // also pass dataModel
             // Do 3 steps: cluster, parallel construction, merge
-            List<Route> solution = clusterRouteMergeDFS.initialConstruction(numClusters);
+            List<Route> solution = clusterRouteMergeDFS.run(numClusters);
             if (solution != null) solutions.add(solution);
         }
         List<Route> finalSolution = Utils.getBestSolution(solutions);
-        logger.info("Final solution, # vehicles: " + (finalSolution == null ? "-1" : finalSolution.size()));
+//        logger.info("Final solution, # vehicles: " + (finalSolution == null ? "-1" : finalSolution.size()));
         assert Utils.isValidSolution(dataModel, finalSolution);
+        logger.info(Utils.getSolutionStats(finalSolution));
+        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0);
     }
 
     /**

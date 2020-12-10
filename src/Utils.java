@@ -3,10 +3,20 @@ import java.util.*;
 public class Utils {
     private final static double EPSILON = 0.00001;
 
+    public static String getSolutionStats(List<Route> routes) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Total # vehicles: " + routes.size());
+        for (int i = 0; i < routes.size(); i++) {
+            sb.append("   Vehicle #" + i + ":\n");
+            sb.append(getRouteStats(routes.get(i)));
+        }
+        return sb.toString();
+    }
+
     public static String getRouteStats(Route route) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Path: " + Arrays.toString(route.routedPath.toArray()) + "\n");
-        sb.append("Arrival time: " + Arrays.toString(route.arrivalTimes.toArray()) + "\n");
+        sb.append("     Path: " + Arrays.toString(route.routedPath.toArray()) + "\n");
+        sb.append("     Arrival time: " + Arrays.toString(route.arrivalTimes.toArray()) + "\n");
         return sb.toString();
     }
 

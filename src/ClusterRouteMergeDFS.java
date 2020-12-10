@@ -16,7 +16,7 @@ public class ClusterRouteMergeDFS {
         this.dataModel = dataModel;
     }
 
-    public List<Route> initialConstruction(int numClusters) {
+    public List<Route> run(int numClusters) {
         List<List<Node>> clusters = constructClusters(numClusters);
 
         // route-merge-improve in depth-first order
@@ -24,40 +24,50 @@ public class ClusterRouteMergeDFS {
         dfs(clusters, solutions, new ArrayList<>(), Collections.singletonList(0.0), dataModel.getDemandNodes(), 0, numClusters);
 
         List<Route> bestSolution = Utils.getBestSolution(solutions);
-        logger.info("DFS solution, # vehicles: " + (bestSolution == null ? "-1" : bestSolution.size()));
+//        logger.info("DFS solution, # vehicles: " + (bestSolution == null ? "-1" : bestSolution.size()));
         return bestSolution;
     }
 
-    void dfs(List<List<Node>> clusters, List<List<Route>> solutions, List<List<Route>> parallelRoutes,
+    void dfs(List<List<Node>> clusters, List<List<Route>> solutions, List<Route> prevMergedSolution,
              List<Double> departureTimes, Set<Node> unRoutedCustomers, int i, int numClusters) {
         // TODO: check back, we need deep copy, not shallow copies
-        if (i == numClusters) {
-            // Apply the merging approach (to reduce # vehicles needed)
-            assert Utils.isParallelRoutesValid(dataModel, parallelRoutes);
-            List<Route> mergedRoute = mergeRoutes(parallelRoutes);
-            assert Utils.isValidSolution(dataModel, mergedRoute);
-            solutions.add(mergedRoute);
-        } else {
+        if (i < numClusters) {
             for (double departureTime : departureTimes) {
+                // Construct a solution for the current sub-MTVRPTW
                 List<Route> routedCluster = constructRoute(clusters.get(i), departureTime);
-
+                // Remove the newly routed customers from list of un-routed
                 Set<Node> newlyRoutedCustomers = Utils.getRoutedCustomers(routedCluster);
                 unRoutedCustomers.removeAll(newlyRoutedCustomers);
-                parallelRoutes.add(routedCluster);
-
-                dfs(clusters, solutions, parallelRoutes, selectDepartureTimes(routedCluster, unRoutedCustomers), unRoutedCustomers, i + 1, numClusters);
-
+                // Merged Ki and K(i+1)
+                List<Route> curMergedSolution = mergeRoutes(prevMergedSolution, routedCluster);
+                // TODO: apply improvement method for curMergedSolution
+                // Get the list of possible departure times (from depot) for the next cluster
+                List<Double> nextDepartureTimes = selectDepartureTimes(routedCluster, unRoutedCustomers);
+                // Continue DFS route-merge-improve
+                dfs(clusters, solutions, curMergedSolution, nextDepartureTimes, unRoutedCustomers, i + 1, numClusters);
+                // Add back the newly routed customers to list of un-routed
                 unRoutedCustomers.addAll(newlyRoutedCustomers);
-                parallelRoutes.remove(parallelRoutes.size() - 1);
             }
+        } else {
+            solutions.add(prevMergedSolution);
         }
     }
 
+    /**
+     * Select m arrival times (at the depot) from the previous sub-MTVRPTW (cluster) plus the setup time at depot
+     * as m departure times for the next sub-MTVRPTW.
+     *
+     * TODO: refine the mechanism to select m departure times
+     *
+     * @param routes the solution to the previous sub-MTVRPTW (previous cluster)
+     * @param unRoutedCustomers the list of remaining un-routed customers
+     * @return list of m departure times
+     */
     List<Double> selectDepartureTimes(List<Route> routes, Set<Node> unRoutedCustomers) {
         // TODO: select based on "some" mechanism
         List<Double> departureTimes = new ArrayList<>();
         routes.forEach(route -> {
-            departureTimes.add(route.getLastestArrivalTimeAtDepot() + dataModel.getDepot().serviceTime);
+            departureTimes.add(route.getLatestArrivalTimeAtDepot() + dataModel.getDepot().serviceTime);
         });
         double latestDepartureTime = dataModel.getLatestDepartureTime(unRoutedCustomers);
         return departureTimes.stream().filter(t -> !Utils.greaterThan(t, latestDepartureTime)).collect(Collectors.toList());
@@ -101,8 +111,8 @@ public class ClusterRouteMergeDFS {
                 // If adding next customer to the curCluster results in exceeding average demand per cluster,
                 // move the customer to the next cluster
                 if (clusterDemand + customer.demand > idealDemandPerCluster) break;
-                else queue.poll();
 
+                queue.poll();
                 curCluster.add(customer);
                 clusterDemand += customer.demand;
             }
@@ -249,55 +259,57 @@ public class ClusterRouteMergeDFS {
     }
 
     /**
-     * Merge routes between Si and K(i+1), where Si = S(i-1) U Ki.
+     * Merge routes of the 2 clusters Ki and K(i+1), and return S(i+1) = Ki U K(i+1).
      * Details can be found in the merging approach, Chang's paper.
-     * @param parallelRoutes the list of all routes from the parallel construction method
-     * @return the final route after merging all routes in parallelRoutes
+     *
+     * The routes in firstCluster can be a merged route (since the merging is iterative).
+     *
+     * @param firstCluster the routes (solution) of the first cluster
+     * @param secondCluster the routes (solution) of the second cluster
+     * @return the solution (routes) after merging the 2 solutions
      */
-    List<Route> mergeRoutes(List<List<Route>> parallelRoutes) {
-        // Copy, to keep the order of each list in parallelRoutes intact
-        List<Route> curK = new ArrayList<>(parallelRoutes.get(0));
-        for (int i = 0; i < parallelRoutes.size() - 1; i++) {  // if there is only 1 cluster, return the cluster immediately
-            List<Route> nextK = new ArrayList<>(parallelRoutes.get(i + 1));
+    List<Route> mergeRoutes(List<Route> firstCluster, List<Route> secondCluster) {
+        // Step 1: input related data
+        // Copy, to keep the order of the lists intact
+        List<Route> Ki = new ArrayList<>(firstCluster);
+        List<Route> Kip1 = new ArrayList<>(secondCluster);
 
-            // Sort routes in Ki in increasing order of the latest arrival time at the depot
-            curK.sort(Comparator.comparingDouble(Route::getLastestArrivalTimeAtDepot));
+        // Step 2: rank the routes
+        // Sort routes in Ki in increasing order of latest arrival time at depot
+        Ki.sort(Comparator.comparingDouble(Route::getLatestArrivalTimeAtDepot));
+        // Sort routes in Kip1 in increasing order of starting service time at the first customer
+        Kip1.sort(Comparator.comparingDouble(a -> a.getStartingServiceTimeAt(1)));
 
-            // Sort routes in K(i+1) in increasing order of the starting service time at the first customer
-            nextK.sort(Comparator.comparingDouble(a -> a.getStartingServiceTimeAt(1)));
-            // Step 3: merge the first route in Ki with the first feasible route in K(i+1), then continue
-            // Implementation: for each route l in Ki, try to merge it with first feasible route m in K(i + 1)
-            //          if can merge, remove m from K(i+1) and add the merged route (l + m) to S(k+1)
-            //          else, add l to S(k+1)
-            //      in both case, increase counter for Ki
-            List<Route> nextS = new ArrayList<>();
-            Iterator<Route> curKIterator = curK.iterator();
-            while (curKIterator.hasNext()) {
-                Route l = curKIterator.next();
-                // Find first route in nextK that can be merged with l
-                Route firstFeasibleMergeRoute = null;
-                for (Route m : nextK) {
-                    // Compute the push forward time at the last depot of l (first depot of m)
-                    double pushForward = l.getStartingServiceTimeAt(l.getLength() - 1) - m.getStartingServiceTimeAt(0);
-                    if (m.checkPushForwardTimeFromNode(pushForward, 0)) {
-                        firstFeasibleMergeRoute = m;
-                        break;
-                    }
+        // Step 3: merge the first route in Ki with the first feasible route in Kip1
+        // Implementation: for each route l in Ki, try to merge it with first feasible route m in K(i + 1)
+        //          if can merge, remove m from K(i+1) and add the merged route (l + m) to S(k+1)
+        //          else, add l to S(k+1)
+        //      in both case, increase counter for Ki
+        List<Route> result = new ArrayList<>();
+        Iterator<Route> iterator = Ki.iterator();
+        while (iterator.hasNext()) {
+            Route l = iterator.next();
+            // Find first route in Kip1 that can be merged with l
+            Route firstFeasibleMergeRoute = null;
+            for (Route m : Kip1) {
+                // Compute the push forward time at the last depot of l (first depot of m)
+                double pushForward = l.getStartingServiceTimeAt(l.getLength() - 1) - m.getStartingServiceTimeAt(0);
+                if (m.checkPushForwardTimeFromNode(pushForward, 0)) {
+                    firstFeasibleMergeRoute = m;
+                    break;
                 }
-                if (firstFeasibleMergeRoute != null) {  // feasible to merge
-                    nextK.remove(firstFeasibleMergeRoute);  // remove the corresponding route from nextK
-                    nextS.add(new Route(l, firstFeasibleMergeRoute));  // add the merged route to the result nextS
-                } else {  // no feasible route in nextK to merge (including the case when nextK is empty)
-                    nextS.add(l);
-                }
-                curKIterator.remove();  // in both cases, remove the route l from curK
             }
-            // Add all remaining routes in nextK (if exist) to nextS
-            nextS.addAll(nextK);
-
-            curK = nextS;  // Assign curK to S(k+1)
+            if (firstFeasibleMergeRoute != null) {  // feasible to merge
+                Kip1.remove(firstFeasibleMergeRoute);  // remove the corresponding route from nextK
+                result.add(new Route(l, firstFeasibleMergeRoute));  // add the merged route to the result result
+            } else {  // no feasible route in nextK to merge (including the case when nextK is empty)
+                result.add(l);
+            }
+            iterator.remove();  // in both cases, remove the route l from curK
         }
-        return curK;
+        // Add all remaining routes in nextK (if exist) to result
+        result.addAll(Kip1);
+        return result;
     }
 
     /**
@@ -350,6 +362,7 @@ public class ClusterRouteMergeDFS {
      * Get the cost of inserting new customer u between i(p-1) and ip
      * -> Route before insertion: (i0, ..., i(p-1), ip, ..., i0)
      * -> Route after insertion: (i0, ..., i(p-1), u, ip, ..., i0)
+     * TODO: move this to Route class
      * @return insertion cost or null if it's not feasible to insert this customer into the position.
      */
     Double getInsertionCost(Route route, Node u, int p) {

@@ -247,7 +247,7 @@ public class Route {
         return Math.max(arrivalTimes.get(p), routedPath.get(p).readyTime);
     }
 
-    double getLastestArrivalTimeAtDepot() {
+    double getLatestArrivalTimeAtDepot() {
         return getArrivalTimeAt(arrivalTimes.size() - 1);
     }
 
