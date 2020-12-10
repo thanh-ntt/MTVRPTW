@@ -63,9 +63,9 @@ public class MTVRPTW {
         // Step 2-9 (currently 2-7): Initial solution construction
         for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
 //            logger.info("Try " + numClusters + " clusters");
-            ClusterRouteMergeDFS clusterRouteMergeDFS = new ClusterRouteMergeDFS(dataModel);  // also pass dataModel
+            ChangsAlgorithm changsAlgorithm = new ChangsAlgorithm(dataModel);  // also pass dataModel
             // Do 3 steps: cluster, parallel construction, merge
-            List<Route> solution = clusterRouteMergeDFS.run(numClusters);
+            List<Route> solution = changsAlgorithm.run(numClusters);
             if (solution != null) solutions.add(solution);
         }
         List<Route> finalSolution = Utils.getBestSolution(solutions);

@@ -8,11 +8,11 @@ import java.util.stream.IntStream;
  * while the algorithm is running, this will just be one of the solutions,
  * not the final solution.
  */
-public class ClusterRouteMergeDFS {
+public class ChangsAlgorithm {
     DataModel dataModel;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
-    public ClusterRouteMergeDFS(DataModel dataModel) {
+    public ChangsAlgorithm(DataModel dataModel) {
         this.dataModel = dataModel;
     }
 
