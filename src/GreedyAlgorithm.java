@@ -1,0 +1,69 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.logging.Logger;
+
+public class GreedyAlgorithm {
+    DataModel dataModel;
+    static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
+
+    public GreedyAlgorithm(DataModel dataModel) {
+        this.dataModel = dataModel;
+    }
+
+    public List<Route> run() {
+        List<Route> solution = new ArrayList<>();
+        Set<Node> unRoutedCustomers = dataModel.getDemandNodes();
+        while (!unRoutedCustomers.isEmpty()) {
+            Route route = new Route(dataModel);
+            recursivelyAddCustomer(unRoutedCustomers, route);
+            assert route.getLength() > 1;
+            solution.add(route);
+        }
+        return solution;
+    }
+
+    /**
+     * Recursively add new trip to the end of the route.
+     * Each trip is constructed by iteratively adding best (greedy) customer to the end of the route.
+     * @param unRoutedCustomers
+     * @param route
+     */
+    void recursivelyAddCustomer(Set<Node> unRoutedCustomers, Route route) {
+        Node u = findBestFeasibleCustomer(unRoutedCustomers, route);
+        if (u == null) return;  // can no longer add customer to this route
+        while (u != null) {
+            route.appendAtLastPosition(u);  // insert u at the end of the current route
+            unRoutedCustomers.remove(u);
+
+            u = findBestFeasibleCustomer(unRoutedCustomers, route);
+        }
+        // Come back to depot to close the trip
+        route.appendAtLastPosition(dataModel.getDepot());
+        // Try to add new trip
+        recursivelyAddCustomer(unRoutedCustomers, route);
+    }
+
+    public Node findBestFeasibleCustomer(Set<Node> unRoutedCustomers, Route route) {
+        Node bestCustomer = null;
+        double earliestTime = 1e9;  // Earliest time the vehicle can continue the trip, initially set to infinity
+        for (Node u : unRoutedCustomers) {
+            if (route.checkCapacityConstraint(route.getLength() - 1, u)) {
+                Node prevCustomer = route.getCustomerAt(route.getLength() - 1);
+                double arrivalTimeAtCustomer = route.getStartingServiceTimeAt(route.getLength() - 1)
+                        + prevCustomer.serviceTime + dataModel.getTravelTime(prevCustomer, u);
+                double startingServiceTime = Math.max(arrivalTimeAtCustomer, u.readyTime);
+                double endingServiceTime = startingServiceTime + u.serviceTime;
+                // Also need to check if the vehicle could return to depot in time
+                double arrivalTimeAtDepot = endingServiceTime + dataModel.getDistanceFromDepot(u);
+                if (arrivalTimeAtCustomer <= u.dueTime
+                        && arrivalTimeAtDepot <= dataModel.getDepot().dueTime
+                        && endingServiceTime < earliestTime) {
+                    earliestTime = arrivalTimeAtCustomer;
+                    bestCustomer = u;
+                }
+            }
+        }
+        return bestCustomer;
+    }
+}

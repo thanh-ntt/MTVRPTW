@@ -41,6 +41,7 @@ public class Utils {
                 if (c != dataModel.getDepot() && !unServedCustomers.remove(c)) return false;
             }
         }
+        if (!routes.stream().allMatch(Route::isValidRoute)) return false;
         return unServedCustomers.isEmpty();
     }
 

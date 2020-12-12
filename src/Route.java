@@ -8,11 +8,24 @@ public class Route {
     // Note that this time can be different from service time, since service time = max(arrival time, ready time)
     List<Double> arrivalTimes;
     Node depot;
-    // The total demand of all customers in the current trip (reset to 0 when returns to depot)
+    // The total demand of all customers in the current trip
+    // A trip is defined as the first customer that leaves depot until coming back to the depot
     // If routedPath = [depot, c1, c2, c3, depot, c4, c5, depot]
     // and demand = [0, 1, 2, 1, 0, 2, 3, 0]
     // Then vehicleLoadInCurTrip = [0, 4, 4, 4, 4, 5, 5, 5]
     List<Integer> vehicleLoadInCurTrip;
+
+    /**
+     * Initialize a route with only depot.
+     * @param dataModel
+     */
+    public Route(DataModel dataModel) {
+        this.dataModel = dataModel;
+        this.depot = dataModel.getDepot();
+        this.vehicleLoadInCurTrip = new ArrayList<>(Arrays.asList(0));
+        this.routedPath = new ArrayList<>(Arrays.asList(depot));
+        this.arrivalTimes = new ArrayList<>(Arrays.asList(0.0));
+    }
 
     /**
      * Deep copy of a route
@@ -128,6 +141,27 @@ public class Route {
     }
 
     /**
+     * Inserting the new customer at the end of the route.
+     * This is a simplified version of insertAtPosition.
+     * @param u the customer to be inserted
+     */
+    public void appendAtLastPosition(Node u) {
+        int length = getLength();
+        routedPath.add(length, u);
+
+        int newVehicleLoad = vehicleLoadInCurTrip.get(length - 1) + u.demand;
+        vehicleLoadInCurTrip.add(length, newVehicleLoad);
+        int idx = length - 1;
+        while (idx >= 0 && routedPath.get(idx) != depot) {
+            vehicleLoadInCurTrip.set(idx, newVehicleLoad);
+            idx--;
+        }
+
+        double arrivalTimeAtU = getStartingServiceTimeAt(length - 1) + routedPath.get(length - 1).serviceTime + dataModel.getTravelTime(routedPath.get(length - 1), u);
+        arrivalTimes.add(length, arrivalTimeAtU);
+    }
+
+    /**
      * Add a dummy depot to the end of the route.
      */
     public void addDummyDepot() {
@@ -151,7 +185,7 @@ public class Route {
         return checkCapacityConstraint(p, u) && checkTimeConstraint(p, u);
     }
 
-    boolean checkCapacityConstraint(int p, Node u) {
+    public boolean checkCapacityConstraint(int p, Node u) {
         return vehicleLoadInCurTrip.get(p) + u.demand <= dataModel.getVehicleCapacity();
     }
 
@@ -242,6 +276,9 @@ public class Route {
     }
 
     boolean isValidRoute() {
+        if (routedPath.get(0) != depot || routedPath.get(routedPath.size() - 1) != depot) {
+            return false;
+        }
         for (int i = 0; i < routedPath.size() - 1; i++) {
             Node customer = routedPath.get(i);
             // Use double comparison with epsilon to tackle rounding
@@ -258,6 +295,10 @@ public class Route {
      */
     double getStartingServiceTimeAt(int p) {
         return Math.max(arrivalTimes.get(p), routedPath.get(p).readyTime);
+    }
+
+    Node getCustomerAt(int p) {
+        return routedPath.get(p);
     }
 
     double getLatestArrivalTimeAtDepot() {

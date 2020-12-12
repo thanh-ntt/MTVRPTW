@@ -8,6 +8,28 @@ public class MTVRPTW {
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
     /**
+     * The algorithm is inspired by the greedy nearest neighbor algorithm for VRP.
+     * In this case, a new customer is inserted into the route based on
+     * the ready time of the vehicle after serving the customer.
+     *
+     * If no feasible customer exists, the vehicle will go back to the depot,
+     * then try to find a new customer for the new trip.
+     *
+     * If there is still no feasible customer, initialize a new vehicle (a new route).
+     *
+     * @param dataModel
+     */
+    public void runGreedyEarliestNeighbor(DataModel dataModel) {
+        logger.info("Start greedy earliest neighbor algorithm");
+        long startTime = System.nanoTime();
+        GreedyAlgorithm greedyAlgorithm = new GreedyAlgorithm(dataModel);
+        List<Route> solution = greedyAlgorithm.run();
+        assert Utils.isValidSolution(dataModel, solution);
+        logger.info(Utils.getSolutionStats(solution));
+        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0);
+    }
+
+    /**
      * Algorithm: a multi-start strategy where we consider different threshold for the maximum # clusters.
      * For each number of cluster, we find the best solution by running a cluster-route-merge algorithm
      * then select the best result (solution) in all solutions.
@@ -103,6 +125,7 @@ public class MTVRPTW {
         DataModel dataModel = new DataModel();  // read from input (add parameters later)
         readInputParameters(dataModel, inputDirectory);
         dataModel.readInputAndPopulateData();
+        mtvrptw.runGreedyEarliestNeighbor(dataModel);
         mtvrptw.runClusterRouteMergeAlgorithm(dataModel);
         mtvrptw.runChangsAlgorithm(dataModel);
     }
