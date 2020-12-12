@@ -1,5 +1,6 @@
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Utils {
     private final static double EPSILON = 0.00001;
@@ -20,6 +21,17 @@ public class Utils {
         sb.append("     Path: " + Arrays.toString(route.routedPath.toArray()) + "\n");
         sb.append("     Arrival time: " + Arrays.toString(route.arrivalTimes.stream().map(df::format).toArray()) + "\n");
         return sb.toString();
+    }
+
+    /**
+     * Get a deep copy of a solution where modification of routes in the newly created solution does not
+     * affect the original solution.
+     *
+     * @param solution
+     * @return
+     */
+    public static List<Route> deepCopySolution(List<Route> solution) {
+        return solution.stream().map(Route::new).collect(Collectors.toList());
     }
 
     public static boolean isValidSolution(DataModel dataModel, List<Route> routes) {

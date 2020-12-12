@@ -14,6 +14,18 @@ public class Route {
     // Then vehicleLoadInCurTrip = [0, 4, 4, 4, 4, 5, 5, 5]
     List<Integer> vehicleLoadInCurTrip;
 
+    /**
+     * Deep copy of a route
+     * @param r the input route
+     */
+    public Route(Route r) {
+        this.dataModel = r.dataModel;
+        this.routedPath = new ArrayList<>(r.routedPath);
+        this.arrivalTimes = new ArrayList<>(r.arrivalTimes);
+        this.depot = r.depot;
+        this.vehicleLoadInCurTrip = new ArrayList<>(r.vehicleLoadInCurTrip);
+    }
+
     public Route(DataModel dataModel, Node seed) {
         this.dataModel = dataModel;
         depot = dataModel.getDepot();

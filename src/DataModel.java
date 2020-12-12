@@ -153,10 +153,10 @@ public class DataModel {
 }
 
 class Node {
-    int id;
-    int demand;
-    int readyTime, dueTime;
-    int serviceTime;
+    final int id;
+    final int demand;
+    final int readyTime, dueTime;
+    final int serviceTime;
 
     public Node(int id, int demand, int readyTime, int dueTime, int serviceTime) {
         this.id = id;

@@ -379,7 +379,7 @@ public class ChangsAlgorithm {
     }
 
     /**
-     * Apply all the techniques in solution improvement phase described in Chang's paper.
+     * Apply Tabu search algorithm described in Chang's paper.
      *
      * @param solution the current solution
      * @return an equally good or better solution
@@ -417,5 +417,25 @@ public class ChangsAlgorithm {
             else return solution;
         }
     }
+
+    /**
+     * The local search algorithm - lambda-interchange, described in Osman (1993).
+     * Here we modified it so that it can solve MTVRPTW.
+     *
+     * Osman (1993) use the evaluation function (the cost of the tour) to be an approximation of
+     * the length of optimal TSP tour (the problem in Osman, 1993 paper is VRP).
+     * In this case, for MTVRPTW, we use the total travel time of the route as the evaluation function.
+     * The
+     *
+     * We also utilize the concept of push-forward concept in Solomon (1987) to speed up the process.
+     * Note that, for insertion, we need to check for capacity and time feasibility.
+     *
+     * @param solution
+     * @return
+     */
+//    List<Route> runLambdaInterchange(List<Route> solution) {
+//        List<Route> bestSolution = Utils.deepCopySolution(solution);
+//
+//    }
 
 }
