@@ -26,7 +26,7 @@ public class ClusterRouting {
             List<Node> cluster = clusters.get(i);
             List<Route> constructedRoute = constructRoute(cluster);
             // from the second cluster onward, for each route (vehicle), we set the time to leave depot to be as late as possible
-            if (i > 0) constructedRoute.forEach(route -> route.optimizeRoute());
+            if (i > 0) constructedRoute.forEach(route -> Utils.optimizeRoute(dataModel, route));
             parallelRoutes.add(constructedRoute);
         }
 //        logger.info("Parallel construction, # vehicles "

@@ -41,7 +41,7 @@ public class Utils {
                 if (c != dataModel.getDepot() && !unServedCustomers.remove(c)) return false;
             }
         }
-        if (!routes.stream().allMatch(Route::isValidRoute)) return false;
+        if (!routes.stream().allMatch(route -> Utils.isValidRoute(dataModel, route))) return false;
         return unServedCustomers.isEmpty();
     }
 
@@ -63,6 +63,55 @@ public class Utils {
             routedCustomers.addAll(route.routedPath);
         routedCustomers.remove(routes.get(0).routedPath.get(0));  // remove depot
         return routedCustomers;
+    }
+
+    /**
+     * Optimize the current route: make the vehicle leave the depot as late as possible (primary objective),
+     * but serves each customer as early as possible (secondary objective).
+     * Steps:
+     *  1. Start with a feasible route
+     *  2. From end to start: make all arrival time of all nodes (including depot) as late as possible
+     *  3. Calculate new (latest) time to leave depot
+     *  4. From first customer (excluding depot) to end: make all arrival time of all customers as early as possible
+     *
+     * O(n) operation - expensive, should only run once for post-optimization,
+     * should not include in the local search algorithm.
+     */
+    public static void optimizeRoute(DataModel dataModel, Route route) {
+        // Make all arrival time of all customers (include the depot) as late as possible
+        route.arrivalTimes.set(route.arrivalTimes.size() - 1, (double) route.depot.dueTime);
+        for (int i = route.arrivalTimes.size() - 2; i >= 0; i--) {
+            Node customer = route.routedPath.get(i);
+            // latest arrival time at customer so that the following customer can be served no later than its current starting service time
+            double latestArrivalTime = route.getStartingServiceTimeAt(i + 1) - dataModel.getTravelTime(customer, route.routedPath.get(i + 1)) - customer.serviceTime;
+            // ensure that the route remains valid (no customer is served after time window ends)
+            route.arrivalTimes.set(i, Math.min(customer.dueTime, latestArrivalTime));
+        }
+
+        for (int i = 1; i < route.arrivalTimes.size(); i++) {
+            Node prevCustomer = route.routedPath.get(i - 1);
+            Node customer = route.routedPath.get(i);
+            route.arrivalTimes.set(i, route.getStartingServiceTimeAt(i - 1) + prevCustomer.serviceTime + dataModel.getTravelTime(prevCustomer, customer));
+        }
+        assert isValidRoute(dataModel, route);
+    }
+
+
+    public static boolean isValidRoute(DataModel dataModel, Route route) {
+        if (route.routedPath.get(0) != route.depot || route.routedPath.get(route.routedPath.size() - 1) != route.depot) {
+            return false;
+        }
+        for (int i = 0; i < route.routedPath.size() - 1; i++) {
+            Node customer = route.routedPath.get(i);
+            // Use double comparison with epsilon to tackle rounding
+            if (Utils.greaterThan(route.arrivalTimes.get(i), customer.dueTime)
+                    || !Utils.equals(route.getStartingServiceTimeAt(i) + customer.serviceTime
+                    + dataModel.getTravelTime(customer, route.routedPath.get(i + 1)), route.arrivalTimes.get(i + 1))
+            ) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
