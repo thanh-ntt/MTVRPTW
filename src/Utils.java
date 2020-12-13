@@ -6,12 +6,14 @@ public class Utils {
     private final static double EPSILON = 0.00001;
     private final static DecimalFormat df = new DecimalFormat("0.0");
 
-    public static String getSolutionStats(List<Route> routes) {
+    public static String getSolutionStats(List<Route> routes, boolean showRouteStats) {
         StringBuilder sb = new StringBuilder();
         sb.append("Total # vehicles: " + routes.size() + "\n");
-        for (int i = 0; i < routes.size(); i++) {
-            sb.append("   Vehicle #" + (i + 1) + ":\n");
-            sb.append(getRouteStats(routes.get(i)));
+        if (showRouteStats) {
+            for (int i = 0; i < routes.size(); i++) {
+                sb.append("   Vehicle #" + (i + 1) + ":\n");
+                sb.append(getRouteStats(routes.get(i)));
+            }
         }
         return sb.toString();
     }

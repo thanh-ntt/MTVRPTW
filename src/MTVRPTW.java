@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 public class MTVRPTW {
 
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
+    static final boolean SHOW_ROUTE_STATS = false;
 
     /**
      * The algorithm is inspired by the greedy nearest neighbor algorithm for VRP.
@@ -25,8 +26,18 @@ public class MTVRPTW {
         GreedyAlgorithm greedyAlgorithm = new GreedyAlgorithm(dataModel);
         List<Route> solution = greedyAlgorithm.run();
         assert Utils.isValidSolution(dataModel, solution);
-        logger.info(Utils.getSolutionStats(solution));
-        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0);
+        logger.info(Utils.getSolutionStats(solution, SHOW_ROUTE_STATS));
+        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0 + "\n");
+    }
+
+    public void runSolomonI1Algorithm(DataModel dataModel) {
+        logger.info("Start Solomon's I1 insertion algorithm");
+        long startTime = System.nanoTime();
+        SolomonI1Algorithm solomonI1Algorithm = new SolomonI1Algorithm(dataModel);
+        List<Route> solution = solomonI1Algorithm.run();
+        assert Utils.isValidSolution(dataModel, solution);
+        logger.info(Utils.getSolutionStats(solution, SHOW_ROUTE_STATS));
+        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0 + "\n");
     }
 
     /**
@@ -56,8 +67,8 @@ public class MTVRPTW {
 
         List<Route> finalSolution = Utils.getBestSolution(solutions);
         assert Utils.isValidSolution(dataModel, finalSolution);
-        logger.info(Utils.getSolutionStats(finalSolution));
-        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0);
+        logger.info(Utils.getSolutionStats(finalSolution, SHOW_ROUTE_STATS));
+        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0 + "\n");
     }
 
     /**
@@ -93,8 +104,8 @@ public class MTVRPTW {
         List<Route> finalSolution = Utils.getBestSolution(solutions);
 //        logger.info("Final solution, # vehicles: " + (finalSolution == null ? "-1" : finalSolution.size()));
         assert Utils.isValidSolution(dataModel, finalSolution);
-        logger.info(Utils.getSolutionStats(finalSolution));
-        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0);
+        logger.info(Utils.getSolutionStats(finalSolution, SHOW_ROUTE_STATS));
+        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0 + "\n");
     }
 
     /**
@@ -126,6 +137,7 @@ public class MTVRPTW {
         readInputParameters(dataModel, inputDirectory);
         dataModel.readInputAndPopulateData();
         mtvrptw.runGreedyEarliestNeighbor(dataModel);
+        mtvrptw.runSolomonI1Algorithm(dataModel);
         mtvrptw.runClusterRouteMergeAlgorithm(dataModel);
         mtvrptw.runChangsAlgorithm(dataModel);
     }
