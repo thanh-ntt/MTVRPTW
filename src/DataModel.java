@@ -101,7 +101,7 @@ public class DataModel {
     public void setAlphaParameters(double first, double second) {
         alpha1 = first;
         alpha2 = second;
-        assert alpha1 + alpha1 == 1;
+        assert alpha1 + alpha2 == 1;
     }
 
     public void setPNeighbourhoodSize(int size) {
