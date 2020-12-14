@@ -3,47 +3,39 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-/**
- * This is "Solution" in paper, but we called it ClusterRouting to make it clear that
- * while the algorithm is running, this will just be one of the solutions,
- * not the final solution.
- */
 public class ClusterRouting {
     DataModel dataModel;
+    SolomonI1Algorithm solomonI1Algorithm;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
     public ClusterRouting(DataModel dataModel) {
         this.dataModel = dataModel;
+        solomonI1Algorithm = new SolomonI1Algorithm(dataModel);
     }
 
     public List<Route> run(int numClusters) {
         List<List<Node>> clusters = constructClusters(numClusters);
 
         // Apply parallel construction: construct routes for each cluster separately
-        // TODO: implement route-merge-improve in depth-first order (instead of linear)
-        List<List<Route>> parallelRoutes = new ArrayList<>();
+        List<List<Route>> subSolutions = new ArrayList<>();
         for (int i = 0; i < clusters.size(); i++) {
             List<Node> cluster = clusters.get(i);
             List<Route> constructedRoute = constructRoute(cluster);
             // from the second cluster onward, for each route (vehicle), we set the time to leave depot to be as late as possible
-            if (i > 0) constructedRoute.forEach(route -> Utils.optimizeRoute(dataModel, route));
-            parallelRoutes.add(constructedRoute);
+//            if (i > 0) constructedRoute.forEach(route -> Utils.optimizeRoute(dataModel, route));
+            subSolutions.add(constructedRoute);
         }
-//        logger.info("Parallel construction, # vehicles "
-//                + parallelRoutes.stream().mapToInt(list -> list.size()).sum()
-//                + ": "
-//                + Arrays.toString(parallelRoutes.stream().map(list -> list.size()).collect(Collectors.toList()).toArray()));
 
         // Apply the merging approach (to reduce # vehicles needed)
-        assert Utils.isParallelRoutesValid(dataModel, parallelRoutes);
-        List<Route> mergedRoute = mergeRoutes(parallelRoutes);
-        assert Utils.isValidSolution(dataModel, mergedRoute);
-//        logger.info("Merge routes, # vehicles: " + mergedRoute.size());
-        return mergedRoute;
+        assert Utils.isParallelRoutesValid(dataModel, subSolutions);
+        List<Route> mergedSolution = mergeRoutes(subSolutions);
+        assert Utils.isValidSolution(dataModel, mergedSolution);
+//        logger.info("Merge routes, # vehicles: " + mergedSolution.size());
+        return mergedSolution;
     }
 
     /**
-     * Construct (numClusters) clusters based on customer's latest delivery time (dueTime).
+     * Construct (numClusters) clusters based on polar angle / distance from depot / due time.
      * This is for the vehicle to make multiple trips (same vehicle make multiple trips in different clusters).
      *
      * @param numClusters target number of clusters
@@ -52,21 +44,14 @@ public class ClusterRouting {
      */
     List<List<Node>> constructClusters(int numClusters) {
         List<List<Node>> clusters = new ArrayList<>();
-        // 3.1.1 step 2: estimate ideal # vehicles needed in each cluster
-//        double averageDemandPerCluster = 1.0 * dataModel.getTotalDemands() / numClusters;
-//        int vehicleCapacity = dataModel.getVehicleCapacity();
-//        int idealNumVehicles = (int) Math.ceil(averageDemandPerCluster / vehicleCapacity);
-//        int idealDemandPerCluster = idealNumVehicles * vehicleCapacity;
         int idealDemandPerCluster = dataModel.getTotalDemands() / numClusters;
 
-                // 3.1.1 step 3: distribute demand nodes to clusters
-        // Priority Queue ordered by latest service time
+        // Order customer based on latest service time (due time)
         List<Node> orderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
-//        orderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
-        orderedCustomers.sort(Comparator.comparingDouble(a -> dataModel.getDistanceFromDepot(a)));
+        orderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
         Queue<Node> queue = new LinkedList<>(orderedCustomers);
 
-        // Step 3: distribute the (sorted) demand nodes to the numClusters ordered clusters
+        // Distribute the (sorted) demand nodes to the numClusters ordered clusters
         while (!queue.isEmpty()) {
             List<Node> curCluster = new ArrayList<>();
             // if this is the last cluster, just add everything
@@ -107,56 +92,12 @@ public class ClusterRouting {
      */
     List<Route> constructRoute(List<Node> cluster) {
         List<Node> orderedCustomers = new ArrayList<>(cluster);
-        // Step 2: rank the demand nodes in decreasing order of travel time from depot
-        orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
+        // Rank the demand nodes in decreasing order of travel time from depot
+//        orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
+        orderedCustomers.sort(Comparator.comparingInt(a -> a.readyTime));
 
-        List<Route> bestRoutes = runI1InsertionHeuristic(orderedCustomers);
-
-        // Step 4, 5: try to reduce # vehicles needed
-        int targetedNumVehicles = bestRoutes.size() - 1;
-        while (targetedNumVehicles > 0) {
-            RoutesOptimizationResult routesOptimizationResult = optimizeNumVehicles(orderedCustomers, targetedNumVehicles);
-            if (routesOptimizationResult.unRoutedCustomers.isEmpty()) {  // can serve all customers
-                bestRoutes = routesOptimizationResult.routes;  // update bestRoutes (this ensures that 'bestRoutes' is always a valid solution)
-                targetedNumVehicles--;  // try to route with 1 less vehicle
-            } else {  // there are customers remained un-routed, output (previous) bestRoutes with (targetedNumVehicles + 1) vehicles used
-                break;
-            }
-        }
+        List<Route> bestRoutes = solomonI1Algorithm.run(orderedCustomers, 0);
         return bestRoutes;
-    }
-
-    /**
-     * I1 insertion heuristic proposed by Solomon, 1987.
-     *
-     * @param orderedCustomers customers are ordered (decreasing) by geographically distance from depot
-     * @return a feasible solution that serves all customers
-     */
-    List<Route> runI1InsertionHeuristic(List<Node> orderedCustomers) {
-        List<Node> unRoutedCustomers = new ArrayList<>(orderedCustomers);
-        // TODO: try to order by lowest allowed starting time for service, suggested in Solomon 1987
-        List<Route> routes = new ArrayList<>();
-        // Apply Solomon's sequential insertion heuristic
-        do {
-            // get the furthest (geographically) un-routed customer from depot
-            Node seed = unRoutedCustomers.remove(0);
-            // Initialize the route to (depot, seed, depot)
-            Route route = new Route(dataModel, seed);
-            NodePositionPair bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers);
-            while (bestCustomerAndPosition != null) {  // loop until infeasible to insert any more customers
-                Node bestCustomer = bestCustomerAndPosition.node;
-                int insertPosition = bestCustomerAndPosition.position;
-
-                // Remove customer from un-routed set and insert into the route
-                unRoutedCustomers.remove(bestCustomer);
-                route.insertAtPosition(insertPosition, bestCustomer);
-
-                bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers);
-            }
-            routes.add(route);
-        } while (!unRoutedCustomers.isEmpty());
-
-        return routes;
     }
 
     /**
@@ -218,7 +159,7 @@ public class ClusterRouting {
         Route routeToInsert = null;
 
         for (Route route : routes) {
-            CostPositionPair costPositionPair = getBestInsertionCostAndPosition(route, u);
+            CostPositionPair costPositionPair = solomonI1Algorithm.getBestInsertionCostAndPosition(route, u);
             if (costPositionPair != null
                     && (bestCostPositionPair == null || bestCostPositionPair.cost < costPositionPair.cost)) {
                 bestCostPositionPair = costPositionPair;
@@ -279,69 +220,4 @@ public class ClusterRouting {
         }
         return curK;
     }
-
-    /**
-     * Get the best customer to be inserted in the route, and the position to be inserted
-     */
-    NodePositionPair getBestCustomerAndPosition(Route route, List<Node> unRoutedCustomers) {
-        NodePositionPair result = null;
-        Double minCost = null;
-        for (Node customer : unRoutedCustomers) {
-            CostPositionPair cur = getBestInsertionCostAndPosition(route, customer);
-            if (cur != null && (minCost == null || cur.cost < minCost)) {
-                minCost = cur.cost;
-                result = new NodePositionPair(customer, cur.position);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Get the best feasible insertion cost of the customer u on the route.
-     * Due to time limit, we only explore p-neighbourhood, value of p-neighbourhood is read from parameters.txt file.
-     * @return insertion cost or null if it's not feasible to insert this customer into the route.
-     */
-    CostPositionPair getBestInsertionCostAndPosition(Route route, Node u) {
-        assert !route.routedPath.contains(u);
-        CostPositionPair result = null;
-
-        // to save time, only consider p-neighbourhood of u (new customer)
-        // this is the set of p nodes on the route closest (distance/time) to u
-        List<Integer> pNeighbourhood = new ArrayList<>();
-        if (route.getLength() - 2 <= dataModel.pNeighbourhoodSize) {  // excluding the depot (depot appears twice in any routes)
-            for (int i = 1; i < route.getLength(); i++)
-                pNeighbourhood.add(i);
-        } else {
-            List<Integer> orderedPositions = IntStream.rangeClosed(1, route.getLength() - 1).boxed().collect(Collectors.toList());
-            orderedPositions.sort(Comparator.comparingDouble(i -> dataModel.getTravelTime(route.routedPath.get(i), u)));
-            pNeighbourhood.addAll(orderedPositions.subList(0, dataModel.pNeighbourhoodSize));
-        }
-
-        for (int p : pNeighbourhood) {
-            Double cost = getInsertionCost(route, u, p);
-            if (cost != null && (result == null || result.cost < cost)) {
-                result = new CostPositionPair(cost, p);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Get the cost of inserting new customer u between i(p-1) and ip
-     * -> Route before insertion: (i0, ..., i(p-1), ip, ..., i0)
-     * -> Route after insertion: (i0, ..., i(p-1), u, ip, ..., i0)
-     * @return insertion cost or null if it's not feasible to insert this customer into the position.
-     */
-    Double getInsertionCost(Route route, Node u, int p) {
-        // Check capacity constraint and time constraint
-        if (!route.canInsertAtPosition(p, u)) return null;
-
-        // Route travel time increase, c11 in I1, Solomon, 1987
-        double c11 = dataModel.getTravelTime(route.routedPath.get(p - 1), u) + dataModel.getTravelTime(u, route.routedPath.get(p)) - dataModel.getTravelTime(route.routedPath.get(p - 1), route.routedPath.get(p));
-        // compute service push forward in service starting time at customer ip
-        double c12 = route.getPushForwardTimeAtNextCustomer(u, p);
-        // I1 insertion heuristic - Solomon, 1987
-        return dataModel.alpha1 * c11 + dataModel.alpha2 * c12;
-    }
-
 }

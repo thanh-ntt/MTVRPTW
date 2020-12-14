@@ -18,7 +18,9 @@ public class SolomonI1Algorithm {
      */
     public List<Route> run() {
         List<Node> customers = new ArrayList<>(dataModel.getDemandNodes());
-        customers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
+        // TODO: make this an input configuration
+//        customers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
+        customers.sort(Comparator.comparingInt(a -> a.readyTime));
         return run(customers, 0);
     }
 
