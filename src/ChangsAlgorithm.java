@@ -21,12 +21,7 @@ import java.util.stream.IntStream;
  */
 public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
     DataModel dataModel;
-    SolomonI1Algorithm solomonI1Algorithm;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
-
-    public ChangsAlgorithm() {
-        solomonI1Algorithm = new SolomonI1Algorithm();
-    }
 
     @Override
     public List<Route> run(DataModel dataModel) {
@@ -168,7 +163,7 @@ public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
         List<Node> orderedCustomers = new ArrayList<>(cluster);
         // Step 2: rank the demand nodes in decreasing order of travel time from depot
         orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
-        List<Route> bestRoutes = solomonI1Algorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
+        List<Route> bestRoutes = SolomonI1Algorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
 
         // Step 4, 5: try to reduce # vehicles needed
         int targetedNumVehicles = bestRoutes.size() - 1;
@@ -243,7 +238,7 @@ public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
         Route routeToInsert = null;
 
         for (Route route : routes) {
-            CostPositionPair costPositionPair = solomonI1Algorithm.getBestInsertionCostAndPosition(route, u);
+            CostPositionPair costPositionPair = SolomonI1Algorithm.getBestInsertionCostAndPosition(route, u, dataModel);
             if (costPositionPair != null
                     && (bestCostPositionPair == null || bestCostPositionPair.cost < costPositionPair.cost)) {
                 bestCostPositionPair = costPositionPair;

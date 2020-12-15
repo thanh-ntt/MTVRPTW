@@ -29,14 +29,15 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
     }
 
     /**
-     * Run I1 insertion heuristic to route the list of un-routed customers
+     * Run I1 insertion heuristic to route the list of un-routed customers.
+     *
+     * This method is made static so that other algorithms can use this as a sub-routine.
      *
      * @param orderedCustomers list of un-routed customer, ordered by some criteria
      * @param departureTimeFromDepot
      * @return
      */
-    public List<Route> run(List<Node> orderedCustomers, double departureTimeFromDepot, DataModel dataModel) {
-        this.dataModel = dataModel;
+    public static List<Route> run(List<Node> orderedCustomers, double departureTimeFromDepot, DataModel dataModel) {
         List<Node> unRoutedCustomers = new ArrayList<>(orderedCustomers);
         List<Route> routes = new ArrayList<>();
         // Apply Solomon's sequential insertion heuristic
@@ -45,7 +46,7 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
             Node seed = unRoutedCustomers.remove(0);
             // Initialize the route to (depot, seed, depot)
             Route route = new Route(dataModel, seed, departureTimeFromDepot);
-            NodePositionPair bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers);
+            NodePositionPair bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel);
             while (bestCustomerAndPosition != null) {  // loop until infeasible to insert any more customers
                 Node bestCustomer = bestCustomerAndPosition.node;
                 int insertPosition = bestCustomerAndPosition.position;
@@ -54,7 +55,7 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
                 unRoutedCustomers.remove(bestCustomer);
                 route.insertAtPosition(insertPosition, bestCustomer);
 
-                bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers);
+                bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel);
             }
             routes.add(route);
         } while (!unRoutedCustomers.isEmpty());
@@ -66,11 +67,11 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
     /**
      * Get the best customer to be inserted in the route, and the position to be inserted
      */
-    NodePositionPair getBestCustomerAndPosition(Route route, List<Node> unRoutedCustomers) {
+    static NodePositionPair getBestCustomerAndPosition(Route route, List<Node> unRoutedCustomers, DataModel dataModel) {
         NodePositionPair result = null;
         Double minCost = null;
         for (Node customer : unRoutedCustomers) {
-            CostPositionPair cur = getBestInsertionCostAndPosition(route, customer);
+            CostPositionPair cur = getBestInsertionCostAndPosition(route, customer, dataModel);
             if (cur != null && (minCost == null || cur.cost < minCost)) {
                 minCost = cur.cost;
                 result = new NodePositionPair(customer, cur.position);
@@ -84,7 +85,7 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
      * Due to time limit, we only explore p-neighbourhood, value of p-neighbourhood is read from parameters.txt file.
      * @return insertion cost or null if it's not feasible to insert this customer into the route.
      */
-     public CostPositionPair getBestInsertionCostAndPosition(Route route, Node u) {
+     public static CostPositionPair getBestInsertionCostAndPosition(Route route, Node u, DataModel dataModel) {
         assert !route.routedPath.contains(u);
         CostPositionPair result = null;
 
@@ -101,7 +102,7 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
         }
 
         for (int p : pNeighbourhood) {
-            Double cost = getInsertionCost(route, u, p);
+            Double cost = getInsertionCost(route, u, p, dataModel);
             if (cost != null && (result == null || result.cost < cost)) {
                 result = new CostPositionPair(cost, p);
             }
@@ -115,7 +116,7 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
      * -> Route after insertion: (i0, ..., i(p-1), u, ip, ..., i0)
      * @return insertion cost or null if it's not feasible to insert this customer into the position.
      */
-    Double getInsertionCost(Route route, Node u, int p) {
+    static Double getInsertionCost(Route route, Node u, int p, DataModel dataModel) {
         // Check capacity constraint and time constraint
         if (!route.canInsertAtPosition(p, u)) return null;
 

@@ -15,12 +15,7 @@ import java.util.stream.IntStream;
  */
 public class ClusterRouting implements SolutionConstructionAlgorithm {
     DataModel dataModel;
-    SolomonI1Algorithm solomonI1Algorithm;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
-
-    public ClusterRouting() {
-        solomonI1Algorithm = new SolomonI1Algorithm();
-    }
 
     @Override
     public List<Route> run(DataModel dataModel) {
@@ -121,8 +116,7 @@ public class ClusterRouting implements SolutionConstructionAlgorithm {
 //        orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
         orderedCustomers.sort(Comparator.comparingInt(a -> a.readyTime));
 
-        // Walk-around, TODO: make this a static method
-        List<Route> bestRoutes = solomonI1Algorithm.run(orderedCustomers, 0, dataModel);
+        List<Route> bestRoutes = SolomonI1Algorithm.run(orderedCustomers, 0, dataModel);
         return bestRoutes;
     }
 
@@ -185,7 +179,7 @@ public class ClusterRouting implements SolutionConstructionAlgorithm {
         Route routeToInsert = null;
 
         for (Route route : routes) {
-            CostPositionPair costPositionPair = solomonI1Algorithm.getBestInsertionCostAndPosition(route, u);
+            CostPositionPair costPositionPair = SolomonI1Algorithm.getBestInsertionCostAndPosition(route, u, dataModel);
             if (costPositionPair != null
                     && (bestCostPositionPair == null || bestCostPositionPair.cost < costPositionPair.cost)) {
                 bestCostPositionPair = costPositionPair;
