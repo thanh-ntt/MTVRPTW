@@ -38,13 +38,19 @@ public class Utils {
 
     public static boolean isValidSolution(DataModel dataModel, List<Route> routes) {
         Set<Node> unServedCustomers = new HashSet<>(dataModel.getDemandNodes());
+        // Serve each customer exactly once
         for (Route route : routes) {
             for (Node c : route.routedPath) {
+                // No customer is served more than once
                 if (c != dataModel.getDepot() && !unServedCustomers.remove(c)) return false;
             }
         }
+        // All customers are served
+        if (!unServedCustomers.isEmpty()) return false;
+        // Each route is valid (w.r.t capacy and time constraint)
         if (!routes.stream().allMatch(route -> Utils.isValidRoute(dataModel, route))) return false;
-        return unServedCustomers.isEmpty();
+
+        return true;
     }
 
     public static boolean isParallelRoutesValid(DataModel dataModel, List<List<Route>> parallelRoutes) {
@@ -103,8 +109,14 @@ public class Utils {
         if (route.routedPath.get(0) != route.depot || route.routedPath.get(route.routedPath.size() - 1) != route.depot) {
             return false;
         }
+
+        // Check capacity and time constraint
+        int curVehicleLoad = 0;
         for (int i = 0; i < route.routedPath.size() - 1; i++) {
             Node customer = route.routedPath.get(i);
+            curVehicleLoad += customer.demand;
+            if (curVehicleLoad > dataModel.getVehicleCapacity()) return false;
+            if (customer == dataModel.getDepot()) curVehicleLoad = 0;
             // Use double comparison with epsilon to tackle rounding
             if (Utils.greaterThan(route.arrivalTimes.get(i), customer.dueTime)
                     || !Utils.equals(route.getStartingServiceTimeAt(i) + customer.serviceTime
@@ -113,6 +125,9 @@ public class Utils {
                 return false;
             }
         }
+        // Arrives at depot on time
+        if (Utils.greaterThan(route.getLatestArrivalTimeAtDepot(), dataModel.getDepot().dueTime)) return false;
+
         return true;
     }
 
