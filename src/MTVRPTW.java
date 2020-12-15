@@ -113,13 +113,12 @@ public class MTVRPTW {
      *      threshold of # clusters
      *      vehicle capacity
      */
-    public static void readInputParameters(DataModel dataModel, String inputDirectory) {
+    public static void readParameters(DataModel dataModel, String inputDirectory) {
         try {
             File inputParametersFile = new File( inputDirectory + "/parameters.txt");
             Scanner inputParameter = new Scanner(inputParametersFile);
-            dataModel.setInputTestFolder(inputDirectory + "/" + inputParameter.nextLine());
+            dataModel.setInputFilePath(inputDirectory + "/" + inputParameter.nextLine() + ".txt");
             dataModel.setNumClustersThreshold(inputParameter.nextInt());
-            dataModel.setVehicleCapacity(inputParameter.nextInt());
             dataModel.setAlphaParameters(inputParameter.nextDouble(), inputParameter.nextDouble());
             dataModel.setPNeighbourhoodSize(inputParameter.nextInt());
             dataModel.setDeltaThreshold(inputParameter.nextInt());
@@ -131,11 +130,16 @@ public class MTVRPTW {
 
     public static void main(String[] args) {
         MTVRPTW mtvrptw = new MTVRPTW();
-        String inputDirectory = System.getProperty("user.dir") + "/input/";
+        String inputDirectory = System.getProperty("user.dir") + "/inputs/";
         logger.info("Reading input from " + inputDirectory);
         DataModel dataModel = new DataModel();  // read from input (add parameters later)
-        readInputParameters(dataModel, inputDirectory);
-        dataModel.readInputAndPopulateData();
+        readParameters(dataModel, inputDirectory);
+        try {
+            dataModel.readInputs();
+        } catch (FileNotFoundException e) {
+            System.out.println("Cannot find file");
+            e.printStackTrace();
+        }
         mtvrptw.runGreedyEarliestNeighbor(dataModel);
         mtvrptw.runSolomonI1Algorithm(dataModel);
         mtvrptw.runClusterRouteMergeAlgorithm(dataModel);

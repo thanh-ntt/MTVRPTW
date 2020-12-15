@@ -36,7 +36,7 @@ public class SolomonI1Algorithm {
         List<Route> routes = new ArrayList<>();
         // Apply Solomon's sequential insertion heuristic
         do {
-            // get the furthest (geographically) un-routed customer from depot
+            // Seed can be the customer with the furthest (geographically) from depot or the earliest ready time
             Node seed = unRoutedCustomers.remove(0);
             // Initialize the route to (depot, seed, depot)
             Route route = new Route(dataModel, seed, departureTimeFromDepot);

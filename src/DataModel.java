@@ -5,6 +5,7 @@ import java.util.stream.IntStream;
 
 public class DataModel {
     double[][] distanceTable;
+    // TODO: refactor, only store Node[] array, not a lot of variables like this
     int[][] timeWindows;
     int[] serviceTimes;
     int[] demands;
@@ -17,7 +18,7 @@ public class DataModel {
     int pNeighbourhoodSize;
     int numClustersThreshold;
     int deltaThreshold;
-    String inputTestFolder;
+    String inputFilePath;
 
     // TODO: Move some methods to Utils class
 
@@ -27,55 +28,33 @@ public class DataModel {
         serviceTimes = new int[numNodes];
         demands = new int[numNodes];
         latestDepartureTimes = new double[numNodes];
-    }
-
-    void readInputAndPopulateData() {
-        readInputFromFiles(inputTestFolder);
-        populateNodeData();
-    }
-
-    void populateNodeData() {
         nodes = new Node[numNodes];
+    }
+
+    void readInputs() throws FileNotFoundException {
+        File file = new File(inputFilePath);
+        Scanner scan = new Scanner(file);
+
+        setVehicleCapacity(scan.nextInt());
+
         for (int i = 0; i < numNodes; i++) {
-            nodes[i] = new Node(i, demands[i], timeWindows[i][0], timeWindows[i][1], serviceTimes[i]);
+            nodes[i] = new Node(scan.nextInt() - 1, scan.nextDouble(), scan.nextDouble(),
+                    (int) scan.nextDouble(), (int) scan.nextDouble(), (int) scan.nextDouble(), (int) scan.nextDouble());
+        }
+
+        for (int i = 0; i < numNodes; i++) {
+            for (int j = 0; j < numNodes; j++) {
+                distanceTable[i][j] = Math.sqrt(Math.pow(nodes[i].xCoord - nodes[j].xCoord, 2) + Math.pow(nodes[i].yCoord - nodes[j].yCoord, 2));
+            }
+            timeWindows[i][0] = nodes[i].readyTime;
+            timeWindows[i][1] = nodes[i].dueTime;
+            serviceTimes[i] = nodes[i].serviceTime;
+            demands[i] = nodes[i].demand;
             latestDepartureTimes[i] = nodes[i].dueTime - getDistanceFromDepot(nodes[i]);
         }
     }
 
-    // TODO: read input from Solomon's benchmark (well-known format) instead of this customized format
-    void readInputFromFiles(String inputTestDirectory) {
-        try {
-            File inputDistanceFile = new File(inputTestDirectory + "/input_distancetable.txt");
-            Scanner inputDistance = new Scanner(inputDistanceFile);
-            for (int i = 0; i < numNodes; i++) {
-                for (int j = 0; j < numNodes; j++) {
-                    distanceTable[i][j] = inputDistance.nextDouble();
-                }
-            }
-            File inputTimeWindowFile = new File(inputTestDirectory + "/input_timewindow.txt");
-            Scanner inputTimeWindow = new Scanner(inputTimeWindowFile);
-            for (int i = 0; i < numNodes; i++) {
-                timeWindows[i][0] = inputTimeWindow.nextInt();
-                timeWindows[i][1] = inputTimeWindow.nextInt();
-            }
-            File inputServiceTimeFile = new File(inputTestDirectory + "/input_servicetime.txt");
-            Scanner inputServiceTime = new Scanner(inputServiceTimeFile);
-            for (int i = 0; i < numNodes; i++) {
-                serviceTimes[i] = inputServiceTime.nextInt();
-            }
-            File inputDemandFile = new File(inputTestDirectory + "/input_demand.txt");
-            Scanner inputDemand = new Scanner(inputDemandFile);
-            for (int i = 0; i < numNodes; i++) {
-                demands[i] = inputDemand.nextInt();
-            }
-        } catch (FileNotFoundException e) {
-            System.out.println("Cannot find file");
-            e.printStackTrace();
-        }
-    }
-
     // Getters & setters
-
     public int getTotalDemands() {
         return IntStream.of(demands).sum();
     }
@@ -84,15 +63,15 @@ public class DataModel {
         return numCustomers;
     }
 
-    public void setInputTestFolder(String inputTestFolder) {
-        this.inputTestFolder = inputTestFolder;
+    public void setInputFilePath(String inputFilePath) {
+        this.inputFilePath = inputFilePath;
     }
 
     public void setNumClustersThreshold(int numClustersThreshold) {
         this.numClustersThreshold = numClustersThreshold;
     }
 
-    public void setVehicleCapacity(int capacity) {
+    void setVehicleCapacity(int capacity) {
         this.vehicleCapacity = capacity;
         for (int demand : demands)
             assert this.vehicleCapacity >= demand;
@@ -157,9 +136,13 @@ class Node {
     final int demand;
     final int readyTime, dueTime;
     final int serviceTime;
+    final double xCoord;
+    final double yCoord;
 
-    public Node(int id, int demand, int readyTime, int dueTime, int serviceTime) {
+    public Node(int id, double xCoord, double yCoord, int demand, int readyTime, int dueTime, int serviceTime) {
         this.id = id;
+        this.xCoord = xCoord;
+        this.yCoord = yCoord;
         this.demand = demand;
         this.readyTime = readyTime;
         this.dueTime = dueTime;
