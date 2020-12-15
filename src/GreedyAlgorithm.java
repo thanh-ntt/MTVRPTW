@@ -3,12 +3,27 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
 
-public class GreedyAlgorithm {
+/**
+ * The algorithm is inspired by the greedy nearest neighbor algorithm for VRP.
+ * In this case, a new customer is inserted into the route based on
+ * the ready time of the vehicle after serving the customer.
+ *
+ * If no feasible customer exists, the vehicle will go back to the depot,
+ * then try to find a new customer for the new trip.
+ *
+ * If there is still no feasible customer, initialize a new vehicle (a new route).
+ *
+ */
+public class GreedyAlgorithm implements SolutionConstructionAlgorithm {
     DataModel dataModel;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
-    public GreedyAlgorithm(DataModel dataModel) {
+    @Override
+    public List<Route> run(DataModel dataModel) {
         this.dataModel = dataModel;
+        List<Route> solution = run();
+        assert Utils.isValidSolution(dataModel, solution);
+        return solution;
     }
 
     public List<Route> run() {

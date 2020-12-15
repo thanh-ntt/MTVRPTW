@@ -3,14 +3,39 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class ClusterRouting {
+/**
+ * Algorithm: a multi-start strategy where we consider different threshold for the maximum # clusters.
+ * For each number of cluster, we find the best solution by running a cluster-route-merge algorithm
+ * then select the best result (solution) in all solutions.
+ * The algorithm for each set of clusters is as follow:
+ *      1. Cluster demand nodes
+ *      2. Parallel construct a solution for each cluster
+ *      3. Merge these solutions
+ *
+ */
+public class ClusterRouting implements SolutionConstructionAlgorithm {
     DataModel dataModel;
     SolomonI1Algorithm solomonI1Algorithm;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
-    public ClusterRouting(DataModel dataModel) {
+    public ClusterRouting() {
+        solomonI1Algorithm = new SolomonI1Algorithm();
+    }
+
+    @Override
+    public List<Route> run(DataModel dataModel) {
         this.dataModel = dataModel;
-        solomonI1Algorithm = new SolomonI1Algorithm(dataModel);
+        List<List<Route>> solutions = new ArrayList<>();
+        // Try different # of clusters
+        for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
+            // Do 3 steps: cluster, parallel construction, merge
+            List<Route> routes = run(numClusters);
+            solutions.add(routes);
+        }
+
+        List<Route> finalSolution = Utils.getBestSolution(solutions);
+        assert Utils.isValidSolution(dataModel, finalSolution);
+        return finalSolution;
     }
 
     public List<Route> run(int numClusters) {
@@ -96,7 +121,8 @@ public class ClusterRouting {
 //        orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
         orderedCustomers.sort(Comparator.comparingInt(a -> a.readyTime));
 
-        List<Route> bestRoutes = solomonI1Algorithm.run(orderedCustomers, 0);
+        // Walk-around, TODO: make this a static method
+        List<Route> bestRoutes = solomonI1Algorithm.run(orderedCustomers, 0, dataModel);
         return bestRoutes;
     }
 

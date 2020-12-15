@@ -4,7 +4,7 @@ import java.util.stream.Collectors;
 
 public class Utils {
     private final static double EPSILON = 0.00001;
-    private final static DecimalFormat df = new DecimalFormat("0.0");
+    private final static DecimalFormat df = new DecimalFormat("0.00");
 
     public static String getSolutionStats(List<Route> routes, boolean showRouteStats) {
         StringBuilder sb = new StringBuilder();

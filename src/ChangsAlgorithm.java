@@ -4,18 +4,44 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * This is "Solution" in paper, but we called it ClusterRouting to make it clear that
- * while the algorithm is running, this will just be one of the solutions,
- * not the final solution.
+ * This is an extended version of the cluster-route-merge algorithm proposed by Chang, 2020.
+ * The main difference is that the cluster-route-merge is performed in a DFS manner,
+ * and there is a solution improvement phase (tabu search) after the initial solution construction.
+ *
+ * Algorithm: a multi-start strategy where we consider different threshold for the maximum # clusters.
+ * For each number of cluster, we find the best solution by running initial construction and improvement phase,
+ * then select the best result (solution) in all solutions.
+ * The algorithm for each # cluster is as follow:
+ *      1. Initial construction:
+ *          1.1. Cluster demand nodes by time window
+ *          1.2. Parallel construct a solution for each cluster with Solomon's sequential insertion heuristic
+ *          1.3. Merge these solutions iteratively
+ *      2. Improvement phase
+ *
  */
-public class ChangsAlgorithm {
+public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
     DataModel dataModel;
     SolomonI1Algorithm solomonI1Algorithm;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
-    public ChangsAlgorithm(DataModel dataModel) {
+    public ChangsAlgorithm() {
+        solomonI1Algorithm = new SolomonI1Algorithm();
+    }
+
+    @Override
+    public List<Route> run(DataModel dataModel) {
         this.dataModel = dataModel;
-        solomonI1Algorithm = new SolomonI1Algorithm(dataModel);
+        List<List<Route>> solutions = new ArrayList<>();
+        // Try different # of clusters
+        for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
+            // Do 3 steps: cluster, parallel construction, merge
+            List<Route> solution = run(numClusters);
+            if (solution != null) solutions.add(solution);
+        }
+
+        List<Route> finalSolution = Utils.getBestSolution(solutions);
+        assert Utils.isValidSolution(dataModel, finalSolution);
+        return finalSolution;
     }
 
     public List<Route> run(int numClusters) {
@@ -142,7 +168,7 @@ public class ChangsAlgorithm {
         List<Node> orderedCustomers = new ArrayList<>(cluster);
         // Step 2: rank the demand nodes in decreasing order of travel time from depot
         orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
-        List<Route> bestRoutes = solomonI1Algorithm.run(orderedCustomers, departureTimeFromDepot);
+        List<Route> bestRoutes = solomonI1Algorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
 
         // Step 4, 5: try to reduce # vehicles needed
         int targetedNumVehicles = bestRoutes.size() - 1;

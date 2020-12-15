@@ -5,12 +5,16 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class SolomonI1Algorithm {
+public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
     DataModel dataModel;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
-    public SolomonI1Algorithm(DataModel dataModel) {
+    @Override
+    public List<Route> run(DataModel dataModel) {
         this.dataModel = dataModel;
+        List<Route> solution = run();
+        assert Utils.isValidSolution(dataModel, solution);
+        return solution;
     }
 
     /**
@@ -21,7 +25,7 @@ public class SolomonI1Algorithm {
         // TODO: make this an input configuration
 //        customers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
         customers.sort(Comparator.comparingInt(a -> a.readyTime));
-        return run(customers, 0);
+        return run(customers, 0, dataModel);
     }
 
     /**
@@ -31,7 +35,8 @@ public class SolomonI1Algorithm {
      * @param departureTimeFromDepot
      * @return
      */
-    public List<Route> run(List<Node> orderedCustomers, double departureTimeFromDepot) {
+    public List<Route> run(List<Node> orderedCustomers, double departureTimeFromDepot, DataModel dataModel) {
+        this.dataModel = dataModel;
         List<Node> unRoutedCustomers = new ArrayList<>(orderedCustomers);
         List<Route> routes = new ArrayList<>();
         // Apply Solomon's sequential insertion heuristic
