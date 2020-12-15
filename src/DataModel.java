@@ -18,20 +18,34 @@ public class DataModel {
     int pNeighbourhoodSize;
     int numClustersThreshold;
     int deltaThreshold;
-    String inputFilePath;
+
+    Configurations configs;
 
     // TODO: Move some methods to Utils class
 
-    public DataModel() {
+    public DataModel(String inputFilePath, Configurations configs) {
         distanceTable = new double[numNodes][numNodes];
         timeWindows = new int[numNodes][2];
         serviceTimes = new int[numNodes];
         demands = new int[numNodes];
         latestDepartureTimes = new double[numNodes];
         nodes = new Node[numNodes];
+        try {
+            this.readInputs(inputFilePath);
+        }  catch (FileNotFoundException e) {
+            System.out.println("Cannot find file");
+            e.printStackTrace();
+        }
+        // Read configs
+        this.configs = configs;
+        numClustersThreshold = configs.numClustersThreshold;
+        alpha1 = configs.alpha1;
+        alpha2 = configs.alpha2;
+        pNeighbourhoodSize = configs.pNeighborhoodSize;
+        deltaThreshold = configs.deltaThreshold;
     }
 
-    void readInputs() throws FileNotFoundException {
+    void readInputs(String inputFilePath) throws FileNotFoundException {
         File file = new File(inputFilePath);
         Scanner scan = new Scanner(file);
 
@@ -61,10 +75,6 @@ public class DataModel {
 
     public int getNumCustomers() {
         return numCustomers;
-    }
-
-    public void setInputFilePath(String inputFilePath) {
-        this.inputFilePath = inputFilePath;
     }
 
     public void setNumClustersThreshold(int numClustersThreshold) {

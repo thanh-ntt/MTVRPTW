@@ -301,6 +301,7 @@ public class ChangsAlgorithm {
     List<Route> runVehicleNumberReduction(List<Route> solution) {
         // Step 2: un-route the routes with # demand nodes less than threshold
         List<Route> shortRoutes = solution.stream().filter(r -> r.getNumDemandNodes() < dataModel.getDeltaThreshold()).collect(Collectors.toList());
+        if (shortRoutes.isEmpty()) return solution;
         List<Node> unRoutedCustomers = new ArrayList<>();
         shortRoutes.forEach(r -> unRoutedCustomers.addAll(r.getDemandNodes()));
 

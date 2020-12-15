@@ -47,7 +47,7 @@ public class Utils {
         }
         // All customers are served
         if (!unServedCustomers.isEmpty()) return false;
-        // Each route is valid (w.r.t capacy and time constraint)
+        // Each route is valid (w.r.t capacity and time constraint)
         if (!routes.stream().allMatch(route -> Utils.isValidRoute(dataModel, route))) return false;
 
         return true;

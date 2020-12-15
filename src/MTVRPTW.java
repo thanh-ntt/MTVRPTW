@@ -1,5 +1,7 @@
+import javax.xml.crypto.Data;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -20,24 +22,22 @@ public class MTVRPTW {
      *
      * @param dataModel
      */
-    public void runGreedyEarliestNeighbor(DataModel dataModel) {
-        logger.info("Start greedy earliest neighbor algorithm");
-        long startTime = System.nanoTime();
+    public static int runGreedyEarliestNeighbor(DataModel dataModel) {
+//        logger.info("Start greedy earliest neighbor algorithm");
+//        long startTime = System.nanoTime();
         GreedyAlgorithm greedyAlgorithm = new GreedyAlgorithm(dataModel);
         List<Route> solution = greedyAlgorithm.run();
         assert Utils.isValidSolution(dataModel, solution);
-        logger.info(Utils.getSolutionStats(solution, SHOW_ROUTE_STATS));
-        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0 + "\n");
+//        logger.info(Utils.getSolutionStats(solution, SHOW_ROUTE_STATS));
+//        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0 + "\n");
+        return solution.size();
     }
 
-    public void runSolomonI1Algorithm(DataModel dataModel) {
-        logger.info("Start Solomon's I1 insertion algorithm");
-        long startTime = System.nanoTime();
+    public static int runSolomonI1Algorithm(DataModel dataModel) {
         SolomonI1Algorithm solomonI1Algorithm = new SolomonI1Algorithm(dataModel);
         List<Route> solution = solomonI1Algorithm.run();
         assert Utils.isValidSolution(dataModel, solution);
-        logger.info(Utils.getSolutionStats(solution, SHOW_ROUTE_STATS));
-        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0 + "\n");
+        return solution.size();
     }
 
     /**
@@ -50,15 +50,11 @@ public class MTVRPTW {
      *      3. Merge these solutions
      *
      */
-    public void runClusterRouteMergeAlgorithm(DataModel dataModel) {
-        logger.info("Start cluster-route-merge algorithm");
-        long startTime = System.nanoTime();
+    public static int runClusterRouteMergeAlgorithm(DataModel dataModel) {
         List<List<Route>> solutions = new ArrayList<>();
-
         // Try different # of clusters
         for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
             // Cluster - Route - Merge algorithm
-//            logger.info("Try " + numClusters + " clusters");
             ClusterRouting clusterRouting = new ClusterRouting(dataModel);  // also pass dataModel
             // Do 3 steps: cluster, parallel construction, merge
             List<Route> routes = clusterRouting.run(numClusters);
@@ -67,8 +63,7 @@ public class MTVRPTW {
 
         List<Route> finalSolution = Utils.getBestSolution(solutions);
         assert Utils.isValidSolution(dataModel, finalSolution);
-        logger.info(Utils.getSolutionStats(finalSolution, SHOW_ROUTE_STATS));
-        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0 + "\n");
+        return finalSolution.size();
     }
 
     /**
@@ -87,12 +82,8 @@ public class MTVRPTW {
      *      2. Improvement phase
      *
      */
-    public void runChangsAlgorithm(DataModel dataModel) {
-        logger.info("Start Chang's algorithm");
-        long startTime = System.nanoTime();
-        // Step 1: try different # of clusters
+    public static int runChangsAlgorithm(DataModel dataModel) {
         List<List<Route>> solutions = new ArrayList<>();
-
         // Step 2-9 (currently 2-7): Initial solution construction
         for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
 //            logger.info("Try " + numClusters + " clusters");
@@ -102,47 +93,36 @@ public class MTVRPTW {
             if (solution != null) solutions.add(solution);
         }
         List<Route> finalSolution = Utils.getBestSolution(solutions);
-//        logger.info("Final solution, # vehicles: " + (finalSolution == null ? "-1" : finalSolution.size()));
         assert Utils.isValidSolution(dataModel, finalSolution);
-        logger.info(Utils.getSolutionStats(finalSolution, SHOW_ROUTE_STATS));
-        logger.info("Computational time: " + (System.nanoTime() - startTime) / 1_000_000_000.0 + "\n");
-    }
-
-    /**
-     * Read algorithm parameters:
-     *      threshold of # clusters
-     *      vehicle capacity
-     */
-    public static void readParameters(DataModel dataModel, String inputDirectory) {
-        try {
-            File inputParametersFile = new File( inputDirectory + "/parameters.txt");
-            Scanner inputParameter = new Scanner(inputParametersFile);
-            dataModel.setInputFilePath(inputDirectory + "/" + inputParameter.nextLine() + ".txt");
-            dataModel.setNumClustersThreshold(inputParameter.nextInt());
-            dataModel.setAlphaParameters(inputParameter.nextDouble(), inputParameter.nextDouble());
-            dataModel.setPNeighbourhoodSize(inputParameter.nextInt());
-            dataModel.setDeltaThreshold(inputParameter.nextInt());
-        } catch (FileNotFoundException e) {
-            System.out.println("File not found");
-            e.printStackTrace();
-        }
+        return finalSolution.size();
     }
 
     public static void main(String[] args) {
-        MTVRPTW mtvrptw = new MTVRPTW();
-        String inputDirectory = System.getProperty("user.dir") + "/inputs/";
-        logger.info("Reading input from " + inputDirectory);
-        DataModel dataModel = new DataModel();  // read from input (add parameters later)
-        readParameters(dataModel, inputDirectory);
-        try {
-            dataModel.readInputs();
-        } catch (FileNotFoundException e) {
-            System.out.println("Cannot find file");
-            e.printStackTrace();
+        int numAlgorithms = 4;
+        File inputDirectory = new File(System.getProperty("user.dir") + "/inputs/");
+
+        // Read configurations
+        // TODO: experiment with multiple configurations
+        Configurations configs = new Configurations(0, inputDirectory.getPath() + "/parameters.txt");
+
+        String[] testSets = inputDirectory.list((dir, name) -> new File(dir, name).isDirectory());
+        assert testSets != null;
+        for (String testSet : testSets) {
+            String testDirectory = inputDirectory + "/" + testSet;
+            String[] inputFiles = Objects.requireNonNull(new File(testDirectory).list((dir, name) -> new File(dir, name).isFile()));
+            int[][] results = new int[numAlgorithms][inputFiles.length];
+            for (int i = 0; i < inputFiles.length; i++) {
+                DataModel dataModel = new DataModel(testDirectory + "/" + inputFiles[i], configs);
+                results[0][i] = MTVRPTW.runGreedyEarliestNeighbor(dataModel);
+                results[1][i] = MTVRPTW.runSolomonI1Algorithm(dataModel);
+                results[2][i] = MTVRPTW.runClusterRouteMergeAlgorithm(dataModel);
+                results[3][i] = MTVRPTW.runChangsAlgorithm(dataModel);
+            }
+            double[] averageResults = new double[numAlgorithms];
+            for (int i = 0; i < numAlgorithms; i++) {
+                averageResults[i] = Arrays.stream(results[i]).average().orElse(Double.NaN);
+            }
+            logger.info(testSet + " - average result: " + Arrays.toString(averageResults));
         }
-        mtvrptw.runGreedyEarliestNeighbor(dataModel);
-        mtvrptw.runSolomonI1Algorithm(dataModel);
-        mtvrptw.runClusterRouteMergeAlgorithm(dataModel);
-        mtvrptw.runChangsAlgorithm(dataModel);
     }
 }
