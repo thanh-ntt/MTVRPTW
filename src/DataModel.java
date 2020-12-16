@@ -15,14 +15,14 @@ public class DataModel {
     Node[] nodes;  // depot + all customers
     int numCustomers = 100;
     int numNodes = 101;  // depot + customers
-    int numClustersThreshold;
-    int deltaThreshold;
 
     Configurations configs;
 
     // TODO: Move some methods to Utils class
 
     public DataModel(String inputFilePath, Configurations configs) {
+        // Read configs
+        this.configs = configs;
         distanceTable = new double[numNodes][numNodes];
         timeWindows = new int[numNodes][2];
         serviceTimes = new int[numNodes];
@@ -35,10 +35,6 @@ public class DataModel {
             System.out.println("Cannot find file");
             e.printStackTrace();
         }
-        // Read configs
-        this.configs = configs;
-        numClustersThreshold = configs.numClustersThreshold;
-        deltaThreshold = configs.deltaThreshold;
     }
 
     void readInputs(String inputFilePath) throws FileNotFoundException {
@@ -73,23 +69,14 @@ public class DataModel {
         return numCustomers;
     }
 
-    public void setNumClustersThreshold(int numClustersThreshold) {
-        this.numClustersThreshold = numClustersThreshold;
-    }
-
     void setVehicleCapacity(int capacity) {
-        this.vehicleCapacity = capacity;
+        this.vehicleCapacity = (int) (capacity * configs.capacityRatio);
         for (int demand : demands)
             assert this.vehicleCapacity >= demand;
     }
 
-    public void setDeltaThreshold(int threshold) {
-        assert threshold >= 1;
-        deltaThreshold = threshold;
-    }
-
     public int getDeltaThreshold() {
-        return this.deltaThreshold;
+        return this.configs.deltaThreshold;
     }
 
     public int getVehicleCapacity() {

@@ -21,7 +21,7 @@ public class ClusterRouting implements SolutionConstructionAlgorithm {
         this.dataModel = dataModel;
         List<List<Route>> solutions = new ArrayList<>();
         // Try different # of clusters
-        for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
+        for (int numClusters = 1; numClusters <= dataModel.configs.numClustersThreshold; numClusters++) {
             // Do 3 steps: cluster, parallel construction, merge
             List<Route> routes = run(numClusters);
             solutions.add(routes);
@@ -112,8 +112,8 @@ public class ClusterRouting implements SolutionConstructionAlgorithm {
     List<Route> constructRoute(List<Node> cluster) {
         List<Node> orderedCustomers = new ArrayList<>(cluster);
         // Rank the demand nodes in decreasing order of travel time from depot
-//        orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
-        orderedCustomers.sort(Comparator.comparingInt(a -> a.readyTime));
+        orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
+//        orderedCustomers.sort(Comparator.comparingInt(a -> a.readyTime));
 
         List<Route> bestRoutes = SolomonI1Algorithm.run(orderedCustomers, 0, dataModel);
         return bestRoutes;

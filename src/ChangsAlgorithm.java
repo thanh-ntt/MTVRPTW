@@ -27,7 +27,7 @@ public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
         this.dataModel = dataModel;
         List<List<Route>> solutions = new ArrayList<>();
         // Try different # of clusters
-        for (int numClusters = 1; numClusters <= dataModel.numClustersThreshold; numClusters++) {
+        for (int numClusters = 1; numClusters <= dataModel.configs.numClustersThreshold; numClusters++) {
             // Do 3 steps: cluster, parallel construction, merge
             List<Route> solution = run(numClusters);
             if (solution != null) solutions.add(solution);

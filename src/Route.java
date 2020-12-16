@@ -234,13 +234,13 @@ public class Route {
      */
     double getPushForwardTimeAtNextCustomer(Node u, int p) {
         Node m = routedPath.get(p - 1), n = routedPath.get(p);
-        double arrivalTimeCustomerU = getStartingServiceTimeAt(p - 1) + m.serviceTime + dataModel.getTravelTime(m, u);
-        assert !Utils.greaterThan(arrivalTimeCustomerU, u.dueTime);  // this time feasibility condition should be checked before
-        double serviceTimeCustomerU = Math.max(arrivalTimeCustomerU, u.readyTime);
-        double oldServiceTimeCustomerN = getStartingServiceTimeAt(p);
-        double newArrivalTimeCustomerN = serviceTimeCustomerU + u.serviceTime + dataModel.getTravelTime(u, n);
-        double newServiceTimeCustomerN = Math.max(newArrivalTimeCustomerN, n.readyTime);
-        double pushForward = newServiceTimeCustomerN - oldServiceTimeCustomerN;
+        double arrivalTimeAtU = getStartingServiceTimeAt(p - 1) + m.serviceTime + dataModel.getTravelTime(m, u);
+        assert !Utils.greaterThan(arrivalTimeAtU, u.dueTime);  // this time feasibility condition should be checked before
+        double startingServiceTimeAtU = Math.max(arrivalTimeAtU, u.readyTime);
+        double oldStartingServiceTimeCustomerN = getStartingServiceTimeAt(p);
+        double newArrivalTimeCustomerN = startingServiceTimeAtU + u.serviceTime + dataModel.getTravelTime(u, n);
+        double newStartingServiceTimeCustomerN = Math.max(newArrivalTimeCustomerN, n.readyTime);
+        double pushForward = newStartingServiceTimeCustomerN - oldStartingServiceTimeCustomerN;
         return pushForward;
     }
 

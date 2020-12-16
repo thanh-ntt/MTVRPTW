@@ -5,6 +5,7 @@ import java.util.Scanner;
 public class Configurations {
     public final int configId;
     public int numClustersThreshold;
+    public double capacityRatio;
     public int deltaThreshold;
     public Configurations(int id, String filePath) {
         configId = id;
@@ -16,6 +17,7 @@ public class Configurations {
             File file = new File(filePath);
             Scanner scan = new Scanner(file);
             numClustersThreshold = scan.nextInt();
+            capacityRatio = scan.nextDouble();
             deltaThreshold = scan.nextInt();
         }  catch (FileNotFoundException e) {
             System.out.println("Cannot find file");
