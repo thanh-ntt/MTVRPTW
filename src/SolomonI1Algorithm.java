@@ -1,7 +1,10 @@
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
+/**
+ * A modification of the Solomon's I1 insertion heuristic (Solomon, 1987).
+ * Here, we modify the insertion heuristic to take advantage of the multi-trip nature of the MTVRPTW.
+ */
 public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
     static Parameter[] parameters = {new Parameter(1, 1, 1, 0), new Parameter(1, 2, 1, 0),
         new Parameter(1, 1, 0, 1), new Parameter(1, 2, 0, 1)};
@@ -15,22 +18,27 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
     }
 
     /**
-     * I1 insertion heuristic proposed by Solomon, 1987.
      * Here we try different initialization criteria as suggested by Solomon:
      *  1. Farthest un-routed customer
      *  2. Un-routed customer with earliest deadline
-     *
      */
     List<Route> runAllInitializationCriteria(DataModel dataModel) {
         List<Node> firstOrderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
         firstOrderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
-        List<Route> firstSolution = run(firstOrderedCustomers, 0, dataModel);
 
         List<Node> secondOrderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
         secondOrderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
-        List<Route> secondSolution = run(secondOrderedCustomers, 0, dataModel);
 
-        List<Route> bestSolution = (firstSolution.size() < secondSolution.size()) ? firstSolution : secondSolution;
+//        List<Node> thirdOrderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
+//        Collections.shuffle(thirdOrderedCustomers);
+
+        List<List<Node>> customerSets = new ArrayList<>(Arrays.asList(firstOrderedCustomers, secondOrderedCustomers));
+        List<List<Route>> solutions = customerSets.stream().map(orderedCustomers -> run(orderedCustomers, 0, dataModel)).collect(Collectors.toList());
+
+        List<Route> bestSolution = null;
+        for (List<Route> solution : solutions) {
+            if (bestSolution == null || solution.size() < bestSolution.size())bestSolution = solution;
+        }
         return bestSolution;
     }
 
@@ -66,6 +74,9 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
             Node seed = unRoutedCustomers.remove(0);
             // Initialize the route to (depot, seed, depot)
             Route route = new Route(dataModel, seed, departureTimeFromDepot);
+
+            route.addDummyDepot();  // enable making multiple trips
+
             NodePositionPair bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
             while (bestCustomerAndPosition != null) {  // loop until infeasible to insert any more customers
                 Node bestCustomer = bestCustomerAndPosition.node;
@@ -77,6 +88,9 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
 
                 bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
             }
+
+            route.removeDummyDepot();
+
             routes.add(route);
         } while (!unRoutedCustomers.isEmpty());
 
