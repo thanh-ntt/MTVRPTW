@@ -1,52 +1,72 @@
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
-    DataModel dataModel;
-    static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
+    static Parameter[] parameters = {new Parameter(1, 1, 1, 0), new Parameter(1, 2, 1, 0),
+        new Parameter(1, 1, 0, 1), new Parameter(1, 2, 0, 1)};
+//    static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
     @Override
     public List<Route> run(DataModel dataModel) {
-        this.dataModel = dataModel;
-        List<Route> solution = run();
+        List<Route> solution = runAllInitializationCriteria(dataModel);
         assert Utils.isValidSolution(dataModel, solution);
         return solution;
     }
 
     /**
      * I1 insertion heuristic proposed by Solomon, 1987.
+     * Here we try different initialization criteria as suggested by Solomon:
+     *  1. Farthest un-routed customer
+     *  2. Un-routed customer with earliest deadline
+     *
      */
-    public List<Route> run() {
-        List<Node> customers = new ArrayList<>(dataModel.getDemandNodes());
-        // TODO: make this an input configuration
-//        customers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
-        customers.sort(Comparator.comparingInt(a -> a.readyTime));
-        return run(customers, 0, dataModel);
+    List<Route> runAllInitializationCriteria(DataModel dataModel) {
+        List<Node> firstOrderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
+        firstOrderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
+        List<Route> firstSolution = run(firstOrderedCustomers, 0, dataModel);
+
+        List<Node> secondOrderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
+        secondOrderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
+        List<Route> secondSolution = run(secondOrderedCustomers, 0, dataModel);
+
+        List<Route> bestSolution = (firstSolution.size() < secondSolution.size()) ? firstSolution : secondSolution;
+        return bestSolution;
     }
 
     /**
      * Run I1 insertion heuristic to route the list of un-routed customers.
-     *
+     * <p>
      * This method is made static so that other algorithms can use this as a sub-routine.
+     *
+     * Here we try all parameter choices as suggested in Solomon, 1987
      *
      * @param orderedCustomers list of un-routed customer, ordered by some criteria
      * @param departureTimeFromDepot
      * @return
      */
     public static List<Route> run(List<Node> orderedCustomers, double departureTimeFromDepot, DataModel dataModel) {
+        List<Route> bestSolution = null;
+        for (Parameter parameter : parameters) {
+            List<Route> solution = runWithParameter(orderedCustomers, departureTimeFromDepot, dataModel, parameter);
+            if (bestSolution == null || solution.size() < bestSolution.size()) {
+                bestSolution = solution;
+            }
+        }
+        return bestSolution;
+    }
+
+    public static List<Route> runWithParameter(List<Node> orderedCustomers, double departureTimeFromDepot,
+                                               DataModel dataModel, Parameter parameter) {
         List<Node> unRoutedCustomers = new ArrayList<>(orderedCustomers);
         List<Route> routes = new ArrayList<>();
         // Apply Solomon's sequential insertion heuristic
         do {
-            // Seed can be the customer with the furthest (geographically) from depot or the earliest ready time
+            // Seed can be the customer based on the ordering
             Node seed = unRoutedCustomers.remove(0);
             // Initialize the route to (depot, seed, depot)
             Route route = new Route(dataModel, seed, departureTimeFromDepot);
-            NodePositionPair bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel);
+            NodePositionPair bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
             while (bestCustomerAndPosition != null) {  // loop until infeasible to insert any more customers
                 Node bestCustomer = bestCustomerAndPosition.node;
                 int insertPosition = bestCustomerAndPosition.position;
@@ -55,7 +75,7 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
                 unRoutedCustomers.remove(bestCustomer);
                 route.insertAtPosition(insertPosition, bestCustomer);
 
-                bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel);
+                bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
             }
             routes.add(route);
         } while (!unRoutedCustomers.isEmpty());
@@ -63,17 +83,24 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
         return routes;
     }
 
-
     /**
-     * Get the best customer to be inserted in the route, and the position to be inserted
+     * Get the best customer to be inserted in the route, and the position to be inserted.
+     * Details in Solomon, 1987
+     * <p>
+     * c2(i(u*), u*, j(u*)) = max[c2(i(u), u, j(u))], u un-routed and feasible
+     * <p>
+     * c2 = lambda * d0u - c1(i, u, j)
+     * is the benefit derived from servicing a customer on the partial route being constructed,
+     * rather than on a direct route.
      */
-    static NodePositionPair getBestCustomerAndPosition(Route route, List<Node> unRoutedCustomers, DataModel dataModel) {
+    static NodePositionPair getBestCustomerAndPosition(Route route, List<Node> unRoutedCustomers,
+                                                       DataModel dataModel, Parameter parameter) {
         NodePositionPair result = null;
-        Double minCost = null;
+        Double maxC2 = null;
         for (Node customer : unRoutedCustomers) {
-            CostPositionPair cur = getBestInsertionCostAndPosition(route, customer, dataModel);
-            if (cur != null && (minCost == null || cur.cost < minCost)) {
-                minCost = cur.cost;
+            c2AndPosition cur = getC2ValueAndPosition(route, customer, dataModel, parameter);
+            if (cur != null && (maxC2 == null || cur.value > maxC2)) {
+                maxC2 = cur.value;
                 result = new NodePositionPair(customer, cur.position);
             }
         }
@@ -81,50 +108,65 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
     }
 
     /**
-     * Get the best feasible insertion cost of the customer u on the route.
-     * Due to time limit, we only explore p-neighbourhood, value of p-neighbourhood is read from parameters.txt file.
+     * Get the best feasible insertion position of the customer u on the route.
+     *
      * @return insertion cost or null if it's not feasible to insert this customer into the route.
      */
-     public static CostPositionPair getBestInsertionCostAndPosition(Route route, Node u, DataModel dataModel) {
+    public static c2AndPosition getC2ValueAndPosition(Route route, Node u, DataModel dataModel, Parameter parameter) {
         assert !route.routedPath.contains(u);
-        CostPositionPair result = null;
+        c2AndPosition minInsertionPosition = null;
 
-        // to save time, only consider p-neighbourhood of u (new customer)
-        // this is the set of p nodes on the route closest (distance/time) to u
-        List<Integer> pNeighbourhood = new ArrayList<>();
-        if (route.getLength() - 2 <= dataModel.pNeighbourhoodSize) {  // excluding the depot (depot appears twice in any routes)
-            for (int i = 1; i < route.getLength(); i++)
-                pNeighbourhood.add(i);
-        } else {
-            List<Integer> orderedPositions = IntStream.rangeClosed(1, route.getLength() - 1).boxed().collect(Collectors.toList());
-            orderedPositions.sort(Comparator.comparingDouble(i -> dataModel.getTravelTime(route.routedPath.get(i), u)));
-            pNeighbourhood.addAll(orderedPositions.subList(0, dataModel.pNeighbourhoodSize));
-        }
-
-        for (int p : pNeighbourhood) {
-            Double cost = getInsertionCost(route, u, p, dataModel);
-            if (cost != null && (result == null || result.cost < cost)) {
-                result = new CostPositionPair(cost, p);
+        for (int p = 1; p < route.getLength(); p++) {
+            Double curCost = computeC1InsertionCost(route, u, p, dataModel, parameter);
+            if (curCost != null && (minInsertionPosition == null || curCost < minInsertionPosition.value)) {
+                minInsertionPosition = new c2AndPosition(curCost, p);
             }
         }
-        return result;
+        if (minInsertionPosition == null) return null;
+        double d0u = dataModel.getDistanceFromDepot(u);
+        double c2 = parameter.lambda * d0u - minInsertionPosition.value;
+        return new c2AndPosition(c2, minInsertionPosition.position);
     }
 
     /**
-     * Get the cost of inserting new customer u between i(p-1) and ip
+     * Get the cost of inserting new customer u between i(p-1) and ip, or u between i(u) and j(u)
      * -> Route before insertion: (i0, ..., i(p-1), ip, ..., i0)
      * -> Route after insertion: (i0, ..., i(p-1), u, ip, ..., i0)
+     *
      * @return insertion cost or null if it's not feasible to insert this customer into the position.
      */
-    static Double getInsertionCost(Route route, Node u, int p, DataModel dataModel) {
+    static Double computeC1InsertionCost(Route route, Node u, int p, DataModel dataModel, Parameter parameter) {
         // Check capacity constraint and time constraint
         if (!route.canInsertAtPosition(p, u)) return null;
 
+        double diu = dataModel.getTravelTime(route.routedPath.get(p - 1), u);
+        double duj = dataModel.getTravelTime(u, route.routedPath.get(p));
+        double dij = dataModel.getTravelTime(route.routedPath.get(p - 1), route.routedPath.get(p));
+
         // Route travel time increase, c11 in I1, Solomon, 1987
-        double c11 = dataModel.getTravelTime(route.routedPath.get(p - 1), u) + dataModel.getTravelTime(u, route.routedPath.get(p)) - dataModel.getTravelTime(route.routedPath.get(p - 1), route.routedPath.get(p));
-        // compute service push forward in service starting time at customer ip
+        double c11 = diu + duj - parameter.mu * dij;
+        // compute service push forward in service starting time at customer ip, this is same as (bju - bj)
         double c12 = route.getPushForwardTimeAtNextCustomer(u, p);
         // I1 insertion heuristic - Solomon, 1987
-        return dataModel.alpha1 * c11 + dataModel.alpha2 * c12;
+        double c1 = parameter.alpha1 * c11 + parameter.alpha2 * c12;
+        return c1;
+    }
+}
+
+class Parameter {
+    double mu, lambda, alpha1, alpha2;
+    public Parameter(double a, double b, double c, double d) {
+        mu = a;
+        lambda = b;
+        alpha1 = c;
+        alpha2 = d;
+    }
+
+    // Default parameters
+    public Parameter() {
+        mu = 1;
+        lambda = 2;
+        alpha1 = 0;
+        alpha2 = 1;
     }
 }

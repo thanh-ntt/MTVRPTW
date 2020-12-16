@@ -1,7 +1,6 @@
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * This is an extended version of the cluster-route-merge algorithm proposed by Chang, 2020.
@@ -234,18 +233,18 @@ public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
      * @return a RoutePositionPair representing the best feasible route and position, or null if no feasible route found
      */
     RoutePositionPair getBestRouteAndPosition(List<Route> routes, Node u) {
-        CostPositionPair bestCostPositionPair = null;
+        c2AndPosition bestC2AndPosition = null;
         Route routeToInsert = null;
 
         for (Route route : routes) {
-            CostPositionPair costPositionPair = SolomonI1Algorithm.getBestInsertionCostAndPosition(route, u, dataModel);
-            if (costPositionPair != null
-                    && (bestCostPositionPair == null || bestCostPositionPair.cost < costPositionPair.cost)) {
-                bestCostPositionPair = costPositionPair;
+            c2AndPosition c2AndPosition = SolomonI1Algorithm.getC2ValueAndPosition(route, u, dataModel, new Parameter());
+            if (c2AndPosition != null
+                    && (bestC2AndPosition == null || bestC2AndPosition.value < c2AndPosition.value)) {
+                bestC2AndPosition = c2AndPosition;
                 routeToInsert = route;
             }
         }
-        return routeToInsert != null ? new RoutePositionPair(routeToInsert, bestCostPositionPair.position) : null;
+        return routeToInsert != null ? new RoutePositionPair(routeToInsert, bestC2AndPosition.position) : null;
     }
 
     /**

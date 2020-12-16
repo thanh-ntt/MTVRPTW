@@ -3,6 +3,7 @@ import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.stream.IntStream;
 
+// TODO: make all variables protected, so other classes cannot change them
 public class DataModel {
     double[][] distanceTable;
     // TODO: refactor, only store Node[] array, not a lot of variables like this
@@ -14,8 +15,6 @@ public class DataModel {
     Node[] nodes;  // depot + all customers
     int numCustomers = 100;
     int numNodes = 101;  // depot + customers
-    double alpha1, alpha2;  // parameters used in parallel construction heuristic - I1 insertion heuristic (Solomon, 1987)
-    int pNeighbourhoodSize;
     int numClustersThreshold;
     int deltaThreshold;
 
@@ -39,9 +38,6 @@ public class DataModel {
         // Read configs
         this.configs = configs;
         numClustersThreshold = configs.numClustersThreshold;
-        alpha1 = configs.alpha1;
-        alpha2 = configs.alpha2;
-        pNeighbourhoodSize = configs.pNeighborhoodSize;
         deltaThreshold = configs.deltaThreshold;
     }
 
@@ -85,17 +81,6 @@ public class DataModel {
         this.vehicleCapacity = capacity;
         for (int demand : demands)
             assert this.vehicleCapacity >= demand;
-    }
-
-    public void setAlphaParameters(double first, double second) {
-        alpha1 = first;
-        alpha2 = second;
-        assert alpha1 + alpha2 == 1;
-    }
-
-    public void setPNeighbourhoodSize(int size) {
-        assert size >= 1;
-        pNeighbourhoodSize = size;
     }
 
     public void setDeltaThreshold(int threshold) {

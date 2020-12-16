@@ -234,11 +234,11 @@ public class Utils {
     }
 }
 
-class CostPositionPair {
-    double cost;
+class c2AndPosition {
+    double value;
     int position;
-    public CostPositionPair(double c, int p) {
-        cost = c;
+    public c2AndPosition(double c, int p) {
+        value = c;
         position = p;
     }
 }

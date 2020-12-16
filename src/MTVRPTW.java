@@ -14,6 +14,7 @@ public class MTVRPTW {
     public static void main(String[] args) {
         SolutionConstructionAlgorithm[] solutionConstructionAlgorithms
                 = {new GreedyAlgorithm(), new SolomonI1Algorithm(), new ClusterRouting(), new ChangsAlgorithm()};
+//        solutionConstructionAlgorithms = Arrays.copyOfRange(solutionConstructionAlgorithms, 1, 2);
         int numAlgorithms = solutionConstructionAlgorithms.length;
         File inputDirectory = new File(System.getProperty("user.dir") + "/inputs/");
 
