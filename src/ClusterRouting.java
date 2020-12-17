@@ -41,7 +41,7 @@ public class ClusterRouting implements SolutionConstructionAlgorithm {
             List<Node> cluster = clusters.get(i);
             List<Route> constructedRoute = constructRoute(cluster);
             // from the second cluster onward, for each route (vehicle), we set the time to leave depot to be as late as possible
-//            if (i > 0) constructedRoute.forEach(route -> Utils.optimizeRoute(dataModel, route));
+            if (i > 0) constructedRoute.forEach(route -> Utils.optimizeRoute(dataModel, route));
             subSolutions.add(constructedRoute);
         }
 
@@ -174,18 +174,18 @@ public class ClusterRouting implements SolutionConstructionAlgorithm {
      * @return a RoutePositionPair representing the best feasible route and position, or null if no feasible route found
      */
     RoutePositionPair getBestRouteAndPosition(List<Route> routes, Node u) {
-        c2AndPosition bestC2AndPosition = null;
+        ValueAndPosition bestValueAndPosition = null;
         Route routeToInsert = null;
 
         for (Route route : routes) {
-            c2AndPosition c2AndPosition = SolomonI1Algorithm.getC2ValueAndPosition(route, u, dataModel, new Parameter());
-            if (c2AndPosition != null
-                    && (bestC2AndPosition == null || bestC2AndPosition.value < c2AndPosition.value)) {
-                bestC2AndPosition = c2AndPosition;
+            ValueAndPosition valueAndPosition = SolomonI1Algorithm.getC2ValueAndPosition(route, u, dataModel, new Parameter());
+            if (valueAndPosition != null
+                    && (bestValueAndPosition == null || bestValueAndPosition.value < valueAndPosition.value)) {
+                bestValueAndPosition = valueAndPosition;
                 routeToInsert = route;
             }
         }
-        return routeToInsert != null ? new RoutePositionPair(routeToInsert, bestC2AndPosition.position) : null;
+        return routeToInsert != null ? new RoutePositionPair(routeToInsert, bestValueAndPosition.position) : null;
     }
 
     /**

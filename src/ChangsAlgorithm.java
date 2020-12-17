@@ -93,7 +93,7 @@ public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
             departureTimes.add(route.getLatestArrivalTimeAtDepot() + dataModel.getDepot().serviceTime);
         });
         double latestDepartureTime = dataModel.getLatestDepartureTime(unRoutedCustomers);
-        return departureTimes.stream().filter(t -> !Utils.greaterThan(t, latestDepartureTime)).collect(Collectors.toList());
+        return departureTimes.stream().filter(t -> t <= latestDepartureTime).collect(Collectors.toList());
     }
 
     /**
@@ -233,18 +233,18 @@ public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
      * @return a RoutePositionPair representing the best feasible route and position, or null if no feasible route found
      */
     RoutePositionPair getBestRouteAndPosition(List<Route> routes, Node u) {
-        c2AndPosition bestC2AndPosition = null;
+        ValueAndPosition bestValueAndPosition = null;
         Route routeToInsert = null;
 
         for (Route route : routes) {
-            c2AndPosition c2AndPosition = SolomonI1Algorithm.getC2ValueAndPosition(route, u, dataModel, new Parameter());
-            if (c2AndPosition != null
-                    && (bestC2AndPosition == null || bestC2AndPosition.value < c2AndPosition.value)) {
-                bestC2AndPosition = c2AndPosition;
+            ValueAndPosition valueAndPosition = SolomonI1Algorithm.getC2ValueAndPosition(route, u, dataModel, new Parameter());
+            if (valueAndPosition != null
+                    && (bestValueAndPosition == null || bestValueAndPosition.value < valueAndPosition.value)) {
+                bestValueAndPosition = valueAndPosition;
                 routeToInsert = route;
             }
         }
-        return routeToInsert != null ? new RoutePositionPair(routeToInsert, bestC2AndPosition.position) : null;
+        return routeToInsert != null ? new RoutePositionPair(routeToInsert, bestValueAndPosition.position) : null;
     }
 
     /**

@@ -13,7 +13,7 @@ public class Route {
     // If routedPath = [depot, c1, c2, c3, depot, c4, c5, depot]
     // and demand = [0, 1, 2, 1, 0, 2, 3, 0]
     // Then vehicleLoadInCurTrip = [0, 4, 4, 4, 4, 5, 5, 5]
-    List<Integer> vehicleLoadInCurTrip;
+    List<Integer> vehicleLoadInCurTrip;  // TODO: remove this (premature optimization)
 
     /**
      * Initialize a route with only depot.
@@ -135,7 +135,7 @@ public class Route {
         arrivalTimes.add(p, arrivalTimeAtP);
         for (int i = p + 1; i < arrivalTimes.size(); i++) {
             double arrivalTimeAtI = getStartingServiceTimeAt(i - 1) + routedPath.get(i - 1).serviceTime + dataModel.getTravelTime(routedPath.get(i - 1), routedPath.get(i));
-            assert arrivalTimeAtI <= routedPath.get(i).dueTime;
+            if (arrivalTimeAtI == arrivalTimes.get(i)) break;  // early termination
             arrivalTimes.set(i, arrivalTimeAtI);
         }
     }
@@ -159,6 +159,37 @@ public class Route {
 
         double arrivalTimeAtU = getStartingServiceTimeAt(length - 1) + routedPath.get(length - 1).serviceTime + dataModel.getTravelTime(routedPath.get(length - 1), u);
         arrivalTimes.add(length, arrivalTimeAtU);
+    }
+
+    public Node removeCustomerAtIndex(int p) {
+        Node u = routedPath.remove(p);
+        assert u != depot;  // There is currently no operations involve removing depot, this is likely a bug
+
+        int previousVehicleLoad = vehicleLoadInCurTrip.get(p);
+        vehicleLoadInCurTrip.remove(p);  // remove at index p
+        arrivalTimes.remove(p);
+
+        // Update the vehicle load for other nodes in the trip
+        int idx = p - 1;
+        while (idx >= 0 && routedPath.get(idx) != depot) {
+            vehicleLoadInCurTrip.set(idx, previousVehicleLoad - u.demand);
+            idx--;
+        }
+        idx = p;
+        while (idx < routedPath.size()) {
+            vehicleLoadInCurTrip.set(idx, previousVehicleLoad - u.demand);
+            if (routedPath.get(idx) == depot) break;  // add up to the next depot
+            idx++;
+        }
+
+        // update arrival time for all nodes after u
+        for (int i = p; i < arrivalTimes.size(); i++) {
+            double arrivalTimeAtI = getStartingServiceTimeAt(i - 1) + routedPath.get(i - 1).serviceTime + dataModel.getTravelTime(routedPath.get(i - 1), routedPath.get(i));
+            if (arrivalTimeAtI == arrivalTimes.get(i)) break;  // early termination
+            arrivalTimes.set(i, arrivalTimeAtI);
+        }
+
+        return u;
     }
 
     /**

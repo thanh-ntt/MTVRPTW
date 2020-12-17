@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
  * Here, we modify the insertion heuristic to take advantage of the multi-trip nature of the MTVRPTW.
  */
 public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
-    static Parameter[] parameters = {new Parameter(1, 1, 1, 0), new Parameter(1, 2, 1, 0),
+    static final Parameter[] PARAMETERS = {new Parameter(1, 1, 1, 0), new Parameter(1, 2, 1, 0),
         new Parameter(1, 1, 0, 1), new Parameter(1, 2, 0, 1)};
 //    static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
@@ -33,7 +33,7 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
 //        Collections.shuffle(thirdOrderedCustomers);
 
         List<List<Node>> customerSets = new ArrayList<>(Arrays.asList(firstOrderedCustomers, secondOrderedCustomers));
-        List<List<Route>> solutions = customerSets.stream().map(orderedCustomers -> run(orderedCustomers, 0, dataModel)).collect(Collectors.toList());
+        List<List<Route>> solutions = customerSets.stream().map(orderedCustomers -> run(orderedCustomers, dataModel.getDepot().readyTime, dataModel)).collect(Collectors.toList());
 
         List<Route> bestSolution = null;
         for (List<Route> solution : solutions) {
@@ -55,7 +55,7 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
      */
     public static List<Route> run(List<Node> orderedCustomers, double departureTimeFromDepot, DataModel dataModel) {
         List<Route> bestSolution = null;
-        for (Parameter parameter : parameters) {
+        for (Parameter parameter : PARAMETERS) {
             List<Route> solution = runWithParameter(orderedCustomers, departureTimeFromDepot, dataModel, parameter);
             if (bestSolution == null || solution.size() < bestSolution.size()) {
                 bestSolution = solution;
@@ -77,16 +77,16 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
 
             route.addDummyDepot();  // enable making multiple trips
 
-            NodePositionPair bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
-            while (bestCustomerAndPosition != null) {  // loop until infeasible to insert any more customers
-                Node bestCustomer = bestCustomerAndPosition.node;
-                int insertPosition = bestCustomerAndPosition.position;
+            CustomerPosition bestCustomerPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
+            while (bestCustomerPosition != null) {  // loop until infeasible to insert any more customers
+                Node bestCustomer = bestCustomerPosition.node;
+                int insertPosition = bestCustomerPosition.position;
 
                 // Remove customer from un-routed set and insert into the route
                 unRoutedCustomers.remove(bestCustomer);
                 route.insertAtPosition(insertPosition, bestCustomer);
 
-                bestCustomerAndPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
+                bestCustomerPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
             }
 
             route.removeDummyDepot();
@@ -107,15 +107,15 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
      * is the benefit derived from servicing a customer on the partial route being constructed,
      * rather than on a direct route.
      */
-    static NodePositionPair getBestCustomerAndPosition(Route route, List<Node> unRoutedCustomers,
+    static CustomerPosition getBestCustomerAndPosition(Route route, List<Node> unRoutedCustomers,
                                                        DataModel dataModel, Parameter parameter) {
-        NodePositionPair result = null;
+        CustomerPosition result = null;
         Double maxC2 = null;
         for (Node customer : unRoutedCustomers) {
-            c2AndPosition cur = getC2ValueAndPosition(route, customer, dataModel, parameter);
+            ValueAndPosition cur = getC2ValueAndPosition(route, customer, dataModel, parameter);
             if (cur != null && (maxC2 == null || cur.value > maxC2)) {
                 maxC2 = cur.value;
-                result = new NodePositionPair(customer, cur.position);
+                result = new CustomerPosition(customer, cur.position);
             }
         }
         return result;
@@ -126,20 +126,20 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
      *
      * @return insertion cost or null if it's not feasible to insert this customer into the route.
      */
-    public static c2AndPosition getC2ValueAndPosition(Route route, Node u, DataModel dataModel, Parameter parameter) {
+    public static ValueAndPosition getC2ValueAndPosition(Route route, Node u, DataModel dataModel, Parameter parameter) {
         assert !route.routedPath.contains(u);
-        c2AndPosition minInsertionPosition = null;
+        ValueAndPosition minC1 = null;
 
         for (int p = 1; p < route.getLength(); p++) {
             Double curCost = computeC1InsertionCost(route, u, p, dataModel, parameter);
-            if (curCost != null && (minInsertionPosition == null || curCost < minInsertionPosition.value)) {
-                minInsertionPosition = new c2AndPosition(curCost, p);
+            if (curCost != null && (minC1 == null || curCost < minC1.value)) {
+                minC1 = new ValueAndPosition(curCost, p);
             }
         }
-        if (minInsertionPosition == null) return null;
+        if (minC1 == null) return null;
         double d0u = dataModel.getDistanceFromDepot(u);
-        double c2 = parameter.lambda * d0u - minInsertionPosition.value;
-        return new c2AndPosition(c2, minInsertionPosition.position);
+        double c2 = parameter.lambda * d0u - minC1.value;
+        return new ValueAndPosition(c2, minC1.position);
     }
 
     /**
