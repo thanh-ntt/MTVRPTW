@@ -5,7 +5,7 @@ import java.util.logging.Logger;
 public class MTVRPTW {
 
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
-    static final boolean SHOW_SOLUTION_STATS = true;
+    static final boolean SHOW_SOLUTION_STATS = false;
     static final boolean SHOW_ROUTE_STATS = false;
 
     public static void main(String[] args) {
@@ -22,21 +22,24 @@ public class MTVRPTW {
 
         String[] testSets = inputDirectory.list((dir, name) -> new File(dir, name).isDirectory());
         Arrays.sort(testSets);
-        int[] cumulativeLength = new int[numAlgorithms + 1];
+        int[] cumulativeLength = new int[numAlgorithms + 2];
         for (String testSet : testSets) {
             String testDirectory = inputDirectory + "/" + testSet;
             String[] inputFiles = Objects.requireNonNull(new File(testDirectory).list((dir, name) -> new File(dir, name).isFile()));
             Arrays.sort(inputFiles);
-            List<Route>[][] solutions = new ArrayList[numAlgorithms + 1][inputFiles.length];
-            int[][] results = new int[numAlgorithms + 1][inputFiles.length];
+            List<Route>[][] solutions = new ArrayList[numAlgorithms + 2][inputFiles.length];
+            int[][] results = new int[solutions.length][inputFiles.length];
             for (int i = 0; i < inputFiles.length; i++) {
                 DataModel dataModel = new DataModel(testDirectory + "/" + inputFiles[i], configs);
-                for (int j = 0; j < results.length - 1; j++) {
+                for (int j = 0; j < results.length - 2; j++) {
                     solutions[j][i] = constructionAlgorithms[j].run(dataModel);
                     results[j][i] = solutions[j][i].size();
                 }
                 // Local search
-                solutions[results.length - 1][i] = new RelocateAlgorithm().run(solutions[1][i], dataModel);
+                solutions[results.length - 2][i] = RelocateAlgorithm.run(solutions[1][i], dataModel);
+                results[results.length - 2][i] = solutions[results.length - 2][i].size();
+                // ILS
+                solutions[results.length - 1][i] = new ILS().run(dataModel);
                 results[results.length - 1][i] = solutions[results.length - 1][i].size();
             }
             int[] sumSolutionSize = new int[results.length];

@@ -150,9 +150,12 @@ public class RelocateAlgorithm {
 
     public static List<Integer> selectRouteIndices(List<Route> solution) {
         // TODO: select more clever
+//        double averageRouteLength = solution.stream().mapToInt(r -> r.getLength()).average().getAsDouble();
         List<Integer> selectedRouteIndices = new ArrayList<>();
         for (int i = 0; i < solution.size(); i++) {
-            selectedRouteIndices.add(i);
+//            if (solution.get(i).getLength() <= averageRouteLength) {
+                selectedRouteIndices.add(i);
+//            }
         }
         return selectedRouteIndices;
     }
