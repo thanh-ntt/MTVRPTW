@@ -7,6 +7,7 @@ public class Configurations {
     public int numClustersThreshold;
     public double capacityRatio;
     public int deltaThreshold;
+    public double distanceRatio, timeRatio;
     public Configurations(int id, String filePath) {
         configId = id;
         readConfigurations(filePath);
@@ -19,6 +20,8 @@ public class Configurations {
             numClustersThreshold = scan.nextInt();
             capacityRatio = scan.nextDouble();
             deltaThreshold = scan.nextInt();
+            distanceRatio = scan.nextDouble();
+            timeRatio = scan.nextDouble();
         }  catch (FileNotFoundException e) {
             System.out.println("Cannot find file");
             e.printStackTrace();

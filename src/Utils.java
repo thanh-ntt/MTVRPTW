@@ -69,9 +69,81 @@ public class Utils {
         Set<Node> routedCustomers = new HashSet<>();
         for (Route route : routes)
             routedCustomers.addAll(route.routedPath);
-        routedCustomers.remove(routes.get(0).routedPath.get(0));  // remove depot
+        routedCustomers.remove(routes.get(0).depot);  // remove depot
         return routedCustomers;
     }
+
+    /**
+     * Check if we can exchange 2 nodes at position p1, p2 in route r1, r2
+     */
+    public static boolean checkExchangeOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2) {
+        Node u1 = r1.getCustomerAt(p1);
+        Node u2 = r2.getCustomerAt(p2);
+        int vehicleCapacity = dataModel.getVehicleCapacity();
+
+        // Check capacity constraint
+        if (r1.vehicleLoadInCurTrip.get(p1) - u1.demand + u2.demand > vehicleCapacity
+                || r2.vehicleLoadInCurTrip.get(p2) - u2.demand + u1.demand > vehicleCapacity) {
+            return false;
+        }
+
+        // Check time constraint
+        Node prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
+        Node prev2 = r2.getCustomerAt(p2 - 1), next2 = r2.getCustomerAt(p2 + 1);
+
+        // Check route r1
+        double newArrivalTimeAtP1 = r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.getTravelTime(prev1, u2);
+        double newServiceTimeAtP1 = Math.max(newArrivalTimeAtP1, u2.readyTime);
+        if (Utils.greaterThan(newServiceTimeAtP1, u2.dueTime)) return false;
+        double newServiceTimeAtNext1 = Math.max(newServiceTimeAtP1 + u2.serviceTime + dataModel.getTravelTime(u2, next1), next1.readyTime);
+        double pushForwardAtNext1 = newServiceTimeAtNext1 - r1.getStartingServiceTimeAt(p1 + 1);
+        if (!r1.checkPushForwardTimeFromNode(pushForwardAtNext1, p1 + 1)) return false;
+
+        // Check route r2
+        double newArrivalTimeAtP2 = r2.getStartingServiceTimeAt(p2 - 1) + prev2.serviceTime + dataModel.getTravelTime(prev2, u1);
+        double newServiceTimeAtP2 = Math.max(newArrivalTimeAtP2, u1.readyTime);
+        if (Utils.greaterThan(newServiceTimeAtP2, u1.dueTime)) return false;
+        double newServiceTimeAtNext2 = Math.max(newServiceTimeAtP2 + u1.serviceTime + dataModel.getTravelTime(u1, next2), next2.readyTime);
+        double pushForwardAtNext2 = newServiceTimeAtNext2 - r2.getStartingServiceTimeAt(p2 + 1);
+        if (!r2.checkPushForwardTimeFromNode(pushForwardAtNext2, p2 + 1)) return false;
+
+        return true;
+    }
+
+    // TODO: refactor so that can reuse code from checkExchangeOperator method
+    public static double getCostExchangeOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2) {
+        Node u1 = r1.getCustomerAt(p1), prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
+        Node u2 = r2.getCustomerAt(p2), prev2 = r2.getCustomerAt(p2 - 1), next2 = r2.getCustomerAt(p2 + 1);
+        double distanceCost = (dataModel.getTravelTime(prev1, u2) + dataModel.getTravelTime(u2, next1) + dataModel.getTravelTime(prev2, u1) + dataModel.getTravelTime(u1, next2))
+                - (dataModel.getTravelTime(prev1, u1) + dataModel.getTravelTime(u1, next1) + dataModel.getTravelTime(prev2, u2) + dataModel.getTravelTime(u2, next2));
+
+        double newArrivalTimeAtP1 = r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.getTravelTime(prev1, u2);
+        double newServiceTimeAtP1 = Math.max(newArrivalTimeAtP1, u2.readyTime);
+        double newServiceTimeAtNext1 = Math.max(newServiceTimeAtP1 + u2.serviceTime + dataModel.getTravelTime(u2, next1), next1.readyTime);
+        double pushForwardAtNext1 = newServiceTimeAtNext1 - r1.getStartingServiceTimeAt(p1 + 1);
+
+        double newArrivalTimeAtP2 = r2.getStartingServiceTimeAt(p2 - 1) + prev2.serviceTime + dataModel.getTravelTime(prev2, u1);
+        double newServiceTimeAtP2 = Math.max(newArrivalTimeAtP2, u1.readyTime);
+        double newServiceTimeAtNext2 = Math.max(newServiceTimeAtP2 + u1.serviceTime + dataModel.getTravelTime(u1, next2), next2.readyTime);
+        double pushForwardAtNext2 = newServiceTimeAtNext2 - r2.getStartingServiceTimeAt(p2 + 1);
+
+        // Total push-forward in time
+        double timeCost = pushForwardAtNext1 + pushForwardAtNext2;
+
+        // TODO: extract this to be a parameter
+        double cost = distanceCost * dataModel.configs.distanceRatio + timeCost * dataModel.configs.timeRatio;
+        return cost;
+    }
+
+    /**
+     * Gain of relocating (inserting) customer at index p1 of route r1
+     * into position p2 of route r2.
+     */
+//    public static double getCostRelocateOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2) {
+//        Node u1 = r1.getCustomerAt(p1), prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
+//        Node next2 = r2.getCustomerAt(p2), prev2 = r2.getCustomerAt(p2 - 1);
+//        double distanceCost = (dataModel.getTravelTime())
+//    }
 
     /**
      * Optimize the current route: make the vehicle leave the depot as late as possible (primary objective),
@@ -104,7 +176,6 @@ public class Utils {
         assert isValidRoute(dataModel, route);
     }
 
-
     public static boolean isValidRoute(DataModel dataModel, Route route) {
         if (route.routedPath.get(0) != route.depot || route.routedPath.get(route.routedPath.size() - 1) != route.depot) {
             return false;
@@ -115,7 +186,9 @@ public class Utils {
         for (int i = 0; i < route.routedPath.size() - 1; i++) {
             Node customer = route.routedPath.get(i);
             curVehicleLoad += customer.demand;
-            if (curVehicleLoad > dataModel.getVehicleCapacity()) return false;
+            if (curVehicleLoad > dataModel.getVehicleCapacity()) {
+                return false;
+            }
             if (customer == dataModel.getDepot()) curVehicleLoad = 0;
             // Use double comparison with epsilon to tackle rounding
             if (Utils.greaterThan(route.arrivalTimes.get(i), customer.dueTime)
@@ -126,7 +199,9 @@ public class Utils {
             }
         }
         // Arrives at depot on time
-        if (Utils.greaterThan(route.getLatestArrivalTimeAtDepot(), dataModel.getDepot().dueTime)) return false;
+        if (Utils.greaterThan(route.getLatestArrivalTimeAtDepot(), dataModel.getDepot().dueTime)) {
+            return false;
+        }
 
         return true;
     }
@@ -234,19 +309,19 @@ public class Utils {
     }
 }
 
-class c2AndPosition {
+class ValueAndPosition {
     double value;
     int position;
-    public c2AndPosition(double c, int p) {
+    public ValueAndPosition(double c, int p) {
         value = c;
         position = p;
     }
 }
 
-class NodePositionPair {
+class CustomerPosition {
     Node node;
     int position;
-    public NodePositionPair(Node n, int p) {
+    public CustomerPosition(Node n, int p) {
         node = n;
         position = p;
     }
