@@ -82,8 +82,8 @@ public class Utils {
         int vehicleCapacity = dataModel.getVehicleCapacity();
 
         // Check capacity constraint
-        if (r1.vehicleLoadInCurTrip.get(p1) - u1.demand + u2.demand > vehicleCapacity
-                || r2.vehicleLoadInCurTrip.get(p2) - u2.demand + u1.demand > vehicleCapacity) {
+        if (!r1.checkCapacityConstraint(p1, u2.demand - u1.demand)
+                || !r2.checkCapacityConstraint(p2, u1.demand - u2.demand)) {
             return false;
         }
 
@@ -92,45 +92,48 @@ public class Utils {
         Node prev2 = r2.getCustomerAt(p2 - 1), next2 = r2.getCustomerAt(p2 + 1);
 
         // Check route r1
-        double newArrivalTimeAtP1 = r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.getTravelTime(prev1, u2);
+        double newArrivalTimeAtP1 = r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.getDistance(prev1, u2);
         double newServiceTimeAtP1 = Math.max(newArrivalTimeAtP1, u2.readyTime);
         if (Utils.greaterThan(newServiceTimeAtP1, u2.dueTime)) return false;
-        double newServiceTimeAtNext1 = Math.max(newServiceTimeAtP1 + u2.serviceTime + dataModel.getTravelTime(u2, next1), next1.readyTime);
+        double newServiceTimeAtNext1 = Math.max(newServiceTimeAtP1 + u2.serviceTime + dataModel.getDistance(u2, next1), next1.readyTime);
         double pushForwardAtNext1 = newServiceTimeAtNext1 - r1.getStartingServiceTimeAt(p1 + 1);
-        if (!r1.checkPushForwardTimeFromNode(pushForwardAtNext1, p1 + 1)) return false;
+        if (!r1.checkPushForwardTimeFromPosition(pushForwardAtNext1, p1 + 1)) return false;
 
         // Check route r2
-        double newArrivalTimeAtP2 = r2.getStartingServiceTimeAt(p2 - 1) + prev2.serviceTime + dataModel.getTravelTime(prev2, u1);
+        double newArrivalTimeAtP2 = r2.getStartingServiceTimeAt(p2 - 1) + prev2.serviceTime + dataModel.getDistance(prev2, u1);
         double newServiceTimeAtP2 = Math.max(newArrivalTimeAtP2, u1.readyTime);
         if (Utils.greaterThan(newServiceTimeAtP2, u1.dueTime)) return false;
-        double newServiceTimeAtNext2 = Math.max(newServiceTimeAtP2 + u1.serviceTime + dataModel.getTravelTime(u1, next2), next2.readyTime);
+        double newServiceTimeAtNext2 = Math.max(newServiceTimeAtP2 + u1.serviceTime + dataModel.getDistance(u1, next2), next2.readyTime);
         double pushForwardAtNext2 = newServiceTimeAtNext2 - r2.getStartingServiceTimeAt(p2 + 1);
-        if (!r2.checkPushForwardTimeFromNode(pushForwardAtNext2, p2 + 1)) return false;
+        if (!r2.checkPushForwardTimeFromPosition(pushForwardAtNext2, p2 + 1)) return false;
 
         return true;
     }
 
-    // TODO: refactor so that can reuse code from checkExchangeOperator method
+    /**
+     * Get cost of an exchange operator.
+     * This cost function is inspired by Solomon's I1 insertion heuristic,
+     * where we take into account both the distance and push-forward time incurred by the exchange.
+     */
     public static double getCostExchangeOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2) {
         Node u1 = r1.getCustomerAt(p1), prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
         Node u2 = r2.getCustomerAt(p2), prev2 = r2.getCustomerAt(p2 - 1), next2 = r2.getCustomerAt(p2 + 1);
-        double distanceCost = (dataModel.getTravelTime(prev1, u2) + dataModel.getTravelTime(u2, next1) + dataModel.getTravelTime(prev2, u1) + dataModel.getTravelTime(u1, next2))
-                - (dataModel.getTravelTime(prev1, u1) + dataModel.getTravelTime(u1, next1) + dataModel.getTravelTime(prev2, u2) + dataModel.getTravelTime(u2, next2));
+        double distanceCost = (dataModel.getDistance(prev1, u2) + dataModel.getDistance(u2, next1) + dataModel.getDistance(prev2, u1) + dataModel.getDistance(u1, next2))
+                - (dataModel.getDistance(prev1, u1) + dataModel.getDistance(u1, next1) + dataModel.getDistance(prev2, u2) + dataModel.getDistance(u2, next2));
 
-        double newArrivalTimeAtP1 = r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.getTravelTime(prev1, u2);
+        double newArrivalTimeAtP1 = r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.getDistance(prev1, u2);
         double newServiceTimeAtP1 = Math.max(newArrivalTimeAtP1, u2.readyTime);
-        double newServiceTimeAtNext1 = Math.max(newServiceTimeAtP1 + u2.serviceTime + dataModel.getTravelTime(u2, next1), next1.readyTime);
+        double newServiceTimeAtNext1 = Math.max(newServiceTimeAtP1 + u2.serviceTime + dataModel.getDistance(u2, next1), next1.readyTime);
         double pushForwardAtNext1 = newServiceTimeAtNext1 - r1.getStartingServiceTimeAt(p1 + 1);
 
-        double newArrivalTimeAtP2 = r2.getStartingServiceTimeAt(p2 - 1) + prev2.serviceTime + dataModel.getTravelTime(prev2, u1);
+        double newArrivalTimeAtP2 = r2.getStartingServiceTimeAt(p2 - 1) + prev2.serviceTime + dataModel.getDistance(prev2, u1);
         double newServiceTimeAtP2 = Math.max(newArrivalTimeAtP2, u1.readyTime);
-        double newServiceTimeAtNext2 = Math.max(newServiceTimeAtP2 + u1.serviceTime + dataModel.getTravelTime(u1, next2), next2.readyTime);
+        double newServiceTimeAtNext2 = Math.max(newServiceTimeAtP2 + u1.serviceTime + dataModel.getDistance(u1, next2), next2.readyTime);
         double pushForwardAtNext2 = newServiceTimeAtNext2 - r2.getStartingServiceTimeAt(p2 + 1);
 
         // Total push-forward in time
         double timeCost = pushForwardAtNext1 + pushForwardAtNext2;
 
-        // TODO: extract this to be a parameter
         double cost = distanceCost * dataModel.configs.distanceRatio + timeCost * dataModel.configs.timeRatio;
         return cost;
     }
@@ -163,7 +166,7 @@ public class Utils {
         for (int i = route.arrivalTimes.size() - 2; i >= 0; i--) {
             Node customer = route.routedPath.get(i);
             // latest arrival time at customer so that the following customer can be served no later than its current starting service time
-            double latestArrivalTime = route.getStartingServiceTimeAt(i + 1) - dataModel.getTravelTime(customer, route.routedPath.get(i + 1)) - customer.serviceTime;
+            double latestArrivalTime = route.getStartingServiceTimeAt(i + 1) - dataModel.getDistance(customer, route.routedPath.get(i + 1)) - customer.serviceTime;
             // ensure that the route remains valid (no customer is served after time window ends)
             route.arrivalTimes.set(i, Math.min(customer.dueTime, latestArrivalTime));
         }
@@ -171,7 +174,7 @@ public class Utils {
         for (int i = 1; i < route.arrivalTimes.size(); i++) {
             Node prevCustomer = route.routedPath.get(i - 1);
             Node customer = route.routedPath.get(i);
-            route.arrivalTimes.set(i, route.getStartingServiceTimeAt(i - 1) + prevCustomer.serviceTime + dataModel.getTravelTime(prevCustomer, customer));
+            route.arrivalTimes.set(i, route.getStartingServiceTimeAt(i - 1) + prevCustomer.serviceTime + dataModel.getDistance(prevCustomer, customer));
         }
         assert isValidRoute(dataModel, route);
     }
@@ -193,7 +196,7 @@ public class Utils {
             // Use double comparison with epsilon to tackle rounding
             if (Utils.greaterThan(route.arrivalTimes.get(i), customer.dueTime)
                     || !Utils.equals(route.getStartingServiceTimeAt(i) + customer.serviceTime
-                    + dataModel.getTravelTime(customer, route.routedPath.get(i + 1)), route.arrivalTimes.get(i + 1))
+                    + dataModel.getDistance(customer, route.routedPath.get(i + 1)), route.arrivalTimes.get(i + 1))
             ) {
                 return false;
             }

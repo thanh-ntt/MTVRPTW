@@ -151,16 +151,16 @@ public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
      */
     static Double computeC1InsertionCost(Route route, Node u, int p, DataModel dataModel, Parameter parameter) {
         // Check capacity constraint and time constraint
-        if (!route.canInsertAtPosition(p, u)) return null;
+        if (!route.canInsertCustomerAt(p, u)) return null;
 
-        double diu = dataModel.getTravelTime(route.routedPath.get(p - 1), u);
-        double duj = dataModel.getTravelTime(u, route.routedPath.get(p));
-        double dij = dataModel.getTravelTime(route.routedPath.get(p - 1), route.routedPath.get(p));
+        double diu = dataModel.getDistance(route.routedPath.get(p - 1), u);
+        double duj = dataModel.getDistance(u, route.routedPath.get(p));
+        double dij = dataModel.getDistance(route.routedPath.get(p - 1), route.routedPath.get(p));
 
         // Route travel time increase, c11 in I1, Solomon, 1987
         double c11 = diu + duj - parameter.mu * dij;
         // compute service push forward in service starting time at customer ip, this is same as (bju - bj)
-        double c12 = route.getPushForwardTimeAtNextCustomer(u, p);
+        double c12 = route.getPushForwardTimeAfterInsertion(u, p);
         // I1 insertion heuristic - Solomon, 1987
         double c1 = parameter.alpha1 * c11 + parameter.alpha2 * c12;
         return c1;

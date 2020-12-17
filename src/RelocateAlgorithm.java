@@ -60,7 +60,7 @@ public class RelocateAlgorithm implements LocalSearchAlgorithm {
                     for (int j = 0; j < curSolution.size() && !inserted; j++) {
                         Route r2 = curSolution.get(j);
                         for (int p2 = 1; p2 < r2.getLength() && !inserted; p2++) {
-                            if (r2.canInsertAtPosition(p2, u)) {
+                            if (r2.canInsertCustomerAt(p2, u)) {
                                 r1.removeCustomerAtIndex(p1);
                                 r2.insertAtPosition(p2, u);
                                 inserted = true;  // once inserted (relocated), move to the next customer

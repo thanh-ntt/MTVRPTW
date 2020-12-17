@@ -283,7 +283,7 @@ public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
             for (Route m : Kip1) {
                 // Compute the push forward time at the last depot of l (first depot of m)
                 double pushForward = l.getStartingServiceTimeAt(l.getLength() - 1) - m.getStartingServiceTimeAt(0);
-                if (m.checkPushForwardTimeFromNode(pushForward, 0)) {
+                if (m.checkPushForwardTimeFromPosition(pushForward, 0)) {
                     firstFeasibleMergeRoute = m;
                     break;
                 }

@@ -96,15 +96,11 @@ public class DataModel {
         return distanceTable[node.id][0];
     }
 
-    public double getLatestDepartureTimeFor(Node node) {
-        return latestDepartureTimes[node.id];
-    }
-
     public double getLatestDepartureTime(Set<Node> unRoutedCustomers) {
-        return unRoutedCustomers.stream().mapToDouble(this::getLatestDepartureTimeFor).min().orElseGet(() -> -1.0);
+        return unRoutedCustomers.stream().mapToDouble(c -> latestDepartureTimes[c.id]).min().orElseGet(() -> -1.0);
     }
 
-    public double getTravelTime(Node source, Node destination) {
+    public double getDistance(Node source, Node destination) {
         return distanceTable[source.id][destination.id];
     }
 

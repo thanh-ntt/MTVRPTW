@@ -63,10 +63,10 @@ public class GreedyAlgorithm implements SolutionConstructionAlgorithm {
         Node bestCustomer = null;
         double earliestTime = 1e9;  // Earliest time the vehicle can continue the trip, initially set to infinity
         for (Node u : unRoutedCustomers) {
-            if (route.checkCapacityConstraint(route.getLength() - 1, u)) {
+            if (route.checkCapacityConstraint(route.getLength() - 1, u.demand)) {
                 Node prevCustomer = route.getCustomerAt(route.getLength() - 1);
                 double arrivalTimeAtCustomer = route.getStartingServiceTimeAt(route.getLength() - 1)
-                        + prevCustomer.serviceTime + dataModel.getTravelTime(prevCustomer, u);
+                        + prevCustomer.serviceTime + dataModel.getDistance(prevCustomer, u);
                 double startingServiceTime = Math.max(arrivalTimeAtCustomer, u.readyTime);
                 double endingServiceTime = startingServiceTime + u.serviceTime;
                 // Also need to check if the vehicle could return to depot in time
