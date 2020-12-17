@@ -1,10 +1,6 @@
-import javax.xml.crypto.Data;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 
 public class MTVRPTW {
 
@@ -14,10 +10,10 @@ public class MTVRPTW {
 
     public static void main(String[] args) {
         StringBuilder logMsg = new StringBuilder();
-        SolutionConstructionAlgorithm[] solutionConstructionAlgorithms
+        ConstructionAlgorithm[] constructionAlgorithms
                 = {new GreedyAlgorithm(), new SolomonI1Algorithm(), new ClusterRouting(), new ChangsAlgorithm()};
 //        solutionConstructionAlgorithms = Arrays.copyOfRange(solutionConstructionAlgorithms, 1, 2);
-        int numAlgorithms = solutionConstructionAlgorithms.length;
+        int numAlgorithms = constructionAlgorithms.length;
         File inputDirectory = new File(System.getProperty("user.dir") + "/inputs/");
 
         // Read configurations
@@ -26,7 +22,6 @@ public class MTVRPTW {
 
         String[] testSets = inputDirectory.list((dir, name) -> new File(dir, name).isDirectory());
         Arrays.sort(testSets);
-        assert testSets != null;
         int[] cumulativeLength = new int[numAlgorithms + 1];
         for (String testSet : testSets) {
             String testDirectory = inputDirectory + "/" + testSet;
@@ -37,7 +32,7 @@ public class MTVRPTW {
             for (int i = 0; i < inputFiles.length; i++) {
                 DataModel dataModel = new DataModel(testDirectory + "/" + inputFiles[i], configs);
                 for (int j = 0; j < results.length - 1; j++) {
-                    solutions[j][i] = solutionConstructionAlgorithms[j].run(dataModel);
+                    solutions[j][i] = constructionAlgorithms[j].run(dataModel);
                     results[j][i] = solutions[j][i].size();
                 }
                 // Local search

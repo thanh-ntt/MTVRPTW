@@ -1,6 +1,6 @@
 import java.util.List;
 
-public interface SolutionConstructionAlgorithm {
+public interface ConstructionAlgorithm {
     /**
      * Run the algorithm to construct a valid solution for the MTVRPTW.
      *

@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
  * A modification of the Solomon's I1 insertion heuristic (Solomon, 1987).
  * Here, we modify the insertion heuristic to take advantage of the multi-trip nature of the MTVRPTW.
  */
-public class SolomonI1Algorithm implements SolutionConstructionAlgorithm {
+public class SolomonI1Algorithm implements ConstructionAlgorithm {
     static final Parameter[] PARAMETERS = {new Parameter(1, 1, 1, 0), new Parameter(1, 2, 1, 0),
         new Parameter(1, 1, 0, 1), new Parameter(1, 2, 0, 1)};
 //    static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());

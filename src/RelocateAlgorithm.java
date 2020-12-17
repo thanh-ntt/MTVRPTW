@@ -1,10 +1,12 @@
 import java.util.*;
 
-public class RelocateAlgorithm implements LocalSearchAlgorithm {
-    DataModel dataModel;
-    @Override
-    public List<Route> run(List<Route> solution, DataModel dataModel) {
-        this.dataModel = dataModel;
+/**
+ * Local search with built-in perturbation.
+ * Perturbation: exchange operator
+ * Local search: relocate operator
+ */
+public class RelocateAlgorithm {
+    public static List<Route> run(List<Route> solution, DataModel dataModel) {
         List<List<Route>> neighbourSolutions = new ArrayList<>();
         List<Integer> selectedRouteIndices = selectRouteIndices(solution);
         for (int idx : selectedRouteIndices) {
@@ -146,7 +148,7 @@ public class RelocateAlgorithm implements LocalSearchAlgorithm {
         return bestNeighborhood;
     }
 
-    public List<Integer> selectRouteIndices(List<Route> solution) {
+    public static List<Integer> selectRouteIndices(List<Route> solution) {
         // TODO: select more clever
         List<Integer> selectedRouteIndices = new ArrayList<>();
         for (int i = 0; i < solution.size(); i++) {

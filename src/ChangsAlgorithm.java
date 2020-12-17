@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  *      2. Improvement phase
  *
  */
-public class ChangsAlgorithm implements SolutionConstructionAlgorithm {
+public class ChangsAlgorithm implements ConstructionAlgorithm {
     DataModel dataModel;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 

@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
  *      3. Merge these solutions
  *
  */
-public class ClusterRouting implements SolutionConstructionAlgorithm {
+public class ClusterRouting implements ConstructionAlgorithm {
     DataModel dataModel;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 

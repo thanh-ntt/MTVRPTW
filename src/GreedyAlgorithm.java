@@ -14,7 +14,7 @@ import java.util.logging.Logger;
  * If there is still no feasible customer, initialize a new vehicle (a new route).
  *
  */
-public class GreedyAlgorithm implements SolutionConstructionAlgorithm {
+public class GreedyAlgorithm implements ConstructionAlgorithm {
     DataModel dataModel;
     static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
 
