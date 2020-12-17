@@ -3,3 +3,14 @@
 20
 0.5
 0.5
+0
+1
+
+Inputs (respective ordering):
+<threshold for number of clusters in ClusterRouting, ChangsAlgorithm>
+<vehicle capacity ratio, set to 0.5 to reduce vehicle capacity by half>
+<delta threshold, used in Chang's algorithm>
+<distance ratio, used in evaluation function - Relocate Algorithm>
+<time ratio, used in evaluation function - Relocate Algorithm>
+<exchange operator acceptance criterion - Relocate Algorithm>
+<relocate operator acceptance criterion - Relocate Algorithm>

@@ -8,6 +8,7 @@ public class Configurations {
     public double capacityRatio;
     public int deltaThreshold;
     public double distanceRatio, timeRatio;
+    public int exchangeOperatorAcceptanceCriterion, relocateOperatorAcceptanceCriterion;
     public Configurations(int id, String filePath) {
         configId = id;
         readConfigurations(filePath);
@@ -22,6 +23,8 @@ public class Configurations {
             deltaThreshold = scan.nextInt();
             distanceRatio = scan.nextDouble();
             timeRatio = scan.nextDouble();
+            exchangeOperatorAcceptanceCriterion = scan.nextInt();
+            relocateOperatorAcceptanceCriterion = scan.nextInt();
         }  catch (FileNotFoundException e) {
             System.out.println("Cannot find file");
             e.printStackTrace();

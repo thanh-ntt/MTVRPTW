@@ -139,14 +139,27 @@ public class Utils {
     }
 
     /**
-     * Gain of relocating (inserting) customer at index p1 of route r1
-     * into position p2 of route r2.
+     * Gain of relocating (inserting) customer at index p1 of route r1 into position p2 of route r2.
      */
-//    public static double getCostRelocateOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2) {
-//        Node u1 = r1.getCustomerAt(p1), prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
-//        Node next2 = r2.getCustomerAt(p2), prev2 = r2.getCustomerAt(p2 - 1);
-//        double distanceCost = (dataModel.getTravelTime())
-//    }
+    public static double getCostRelocateOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2) {
+        Node u1 = r1.getCustomerAt(p1), prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
+        Node next2 = r2.getCustomerAt(p2), prev2 = r2.getCustomerAt(p2 - 1);
+        double distanceCost = (dataModel.getDistance(prev2, u1) + dataModel.getDistance(u1, next2) + dataModel.getDistance(prev1, next1))
+                - (dataModel.getDistance(prev1, u1) + dataModel.getDistance(u1, next1) + dataModel.getDistance(prev2, next2));
+
+        double newServiceTimeAtNext1 = Math.max(r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.getDistance(prev1, next1), next1.readyTime);
+        double pushForwardAtNext1 = newServiceTimeAtNext1 - r1.getStartingServiceTimeAt(p1 + 1);
+
+        double newServiceTimeAtP2 = Math.max(r2.getStartingServiceTimeAt(p2 - 1) + prev2.serviceTime + dataModel.getDistance(prev2, u1), u1.readyTime);
+        double newServiceTimeAtNext2 = Math.max(newServiceTimeAtP2 + u1.serviceTime + dataModel.getDistance(u1, next2), next2.readyTime);
+        double pushForwardAtNext2 = newServiceTimeAtNext2 - r2.getStartingServiceTimeAt(p2);  // p2 instead of p2 + 1 because haven't inserted yet
+
+        // Total push-forward in time
+        double timeCost = pushForwardAtNext1 + pushForwardAtNext2;
+
+        double cost = distanceCost * dataModel.configs.distanceRatio + timeCost * dataModel.configs.timeRatio;
+        return cost;
+    }
 
     /**
      * Optimize the current route: make the vehicle leave the depot as late as possible (primary objective),
