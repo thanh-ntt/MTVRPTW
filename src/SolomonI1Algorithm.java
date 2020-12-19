@@ -12,7 +12,7 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
 
     @Override
     public List<Route> run(DataModel dataModel) {
-        List<Route> solution = runAllInitializationCriteria(dataModel);
+        List<Route> solution = runAllInitializationCriteria(dataModel, dataModel.getDemandNodes());
         assert Utils.isValidSolution(dataModel, solution);
         return solution;
     }
@@ -22,14 +22,14 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
      *  1. Farthest un-routed customer
      *  2. Un-routed customer with earliest deadline
      */
-    List<Route> runAllInitializationCriteria(DataModel dataModel) {
-        List<Node> firstOrderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
+    List<Route> runAllInitializationCriteria(DataModel dataModel, Set<Node> unRoutedCustomers) {
+        List<Node> firstOrderedCustomers = new ArrayList<>(unRoutedCustomers);
         firstOrderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
 
-        List<Node> secondOrderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
+        List<Node> secondOrderedCustomers = new ArrayList<>(unRoutedCustomers);
         secondOrderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
 
-//        List<Node> thirdOrderedCustomers = new ArrayList<>(dataModel.getDemandNodes());
+//        List<Node> thirdOrderedCustomers = new ArrayList<>(unRoutedCustomers);
 //        Collections.shuffle(thirdOrderedCustomers);
 
         List<List<Node>> customerSets = new ArrayList<>(Arrays.asList(firstOrderedCustomers, secondOrderedCustomers));
@@ -75,8 +75,6 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
             // Initialize the route to (depot, seed, depot)
             Route route = new Route(dataModel, seed, departureTimeFromDepot);
 
-            route.addDummyDepot();  // enable making multiple trips
-
             CustomerPosition bestCustomerPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
             while (bestCustomerPosition != null) {  // loop until infeasible to insert any more customers
                 Node bestCustomer = bestCustomerPosition.node;
@@ -87,9 +85,16 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
                 route.insertAtPosition(insertPosition, bestCustomer);
 
                 bestCustomerPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
-            }
 
-            route.removeDummyDepot();
+                // Try to add dummy depot to make multiple trips if possible
+                if (bestCustomerPosition == null) {
+                    route.addDummyDepot();
+                    bestCustomerPosition = getBestCustomerAndPosition(route, unRoutedCustomers, dataModel, parameter);
+                    if (bestCustomerPosition == null) {  // Remove dummy depot if needed
+                        route.removeDummyDepot();
+                    }
+                }
+            }
 
             routes.add(route);
         } while (!unRoutedCustomers.isEmpty());
