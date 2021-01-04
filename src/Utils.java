@@ -162,6 +162,27 @@ public class Utils {
     }
 
     /**
+     * Compare 2 solutions s1 and s2 by total waiting time of the vehicle in all routes.
+     * @return f(s1) - f(s2), normalize to {-1, 1}
+     */
+    public static int compareTotalDistance(DataModel dataModel, List<Route> s1, List<Route> s2) {
+        double waitingTimeS1 = s1.stream().mapToDouble(r -> Utils.getTotalDistance(dataModel, r)).sum();
+        double waitingTimeS2 = s2.stream().mapToDouble(r -> Utils.getTotalDistance(dataModel, r)).sum();
+        if (Utils.equals(waitingTimeS1, waitingTimeS2)) return 0;
+        else if (Utils.greaterThan(waitingTimeS1, waitingTimeS2)) return 1;
+        else return -1;
+    }
+
+    static double getTotalDistance(DataModel dataModel, Route route) {
+        double sum = 0;
+        for (int i = 0; i < route.getLength() - 1; i++) {
+//            sum += Math.max(route.getCustomerAt(i).readyTime - route.getArrivalTimeAt(i), 0);
+            sum += dataModel.getDistance(route.getCustomerAt(i), route.getCustomerAt(i + 1));
+        }
+        return sum;
+    }
+
+    /**
      * Optimize the current route: make the vehicle leave the depot as late as possible (primary objective),
      * but serves each customer as early as possible (secondary objective).
      * Steps:

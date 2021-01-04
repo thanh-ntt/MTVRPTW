@@ -164,6 +164,11 @@ public class ChangsAlgorithm implements ConstructionAlgorithm {
         orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
         List<Route> bestRoutes = SolomonI1Algorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
 
+        orderedCustomers.sort(Comparator.comparingDouble(a -> a.dueTime));
+        List<Route> bestRoutes2 = SolomonI1Algorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
+
+        bestRoutes = bestRoutes.size() < bestRoutes2.size() ? bestRoutes : bestRoutes2;
+
         // Step 4, 5: try to reduce # vehicles needed
         int targetedNumVehicles = bestRoutes.size() - 1;
         while (targetedNumVehicles > 0) {

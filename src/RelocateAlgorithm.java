@@ -134,8 +134,10 @@ public class RelocateAlgorithm {
         }
 
         // Find best local move
+        // TODO: find better heuristic to approximate search neighbor
         List<Route> bestNeighborhood = Collections.min(neighbourSolutions, (a, b) -> {
             if (a.size() != b.size()) return a.size() - b.size();
+//            else return Utils.compareTotalDistance(dataModel, a, b);
             else {  // compare shortest route length
                 int shortestRouteLengthA = a.stream().min(Comparator.comparingInt(Route::getLength)).get().getLength();
                 int shortestRouteLengthB = b.stream().min(Comparator.comparingInt(Route::getLength)).get().getLength();

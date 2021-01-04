@@ -116,6 +116,12 @@ public class ClusterRouting implements ConstructionAlgorithm {
 //        orderedCustomers.sort(Comparator.comparingInt(a -> a.readyTime));
 
         List<Route> bestRoutes = SolomonI1Algorithm.run(orderedCustomers, 0, dataModel);
+
+        orderedCustomers.sort(Comparator.comparingDouble(a -> a.dueTime));
+        List<Route> bestRoutes2 = SolomonI1Algorithm.run(orderedCustomers, 0, dataModel);
+
+        bestRoutes = bestRoutes.size() < bestRoutes2.size() ? bestRoutes : bestRoutes2;
+
         return bestRoutes;
     }
 
