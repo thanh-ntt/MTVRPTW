@@ -16,23 +16,23 @@ public class RelocateAlgorithm {
 
             // Try exchange operator
             // For each customer in r1
-            for (int p1 = 1; p1 < r1.getLength(); p1++) {
-                if (r1.getCustomerAt(p1) == dataModel.getDepot()) continue;  // skip depot
-                outerLoopExchange:
-                for (int j = 0; j < curSolution.size(); j++) {  // iterate all remaining routes
-                    Route r2 = curSolution.get(j);
-                    for (int p2 = 1; p2 < r2.getLength(); p2++) {  // iterate all demand nodes in r2
-                        if (r2.getCustomerAt(p2) == dataModel.getDepot()) continue;  // skip depot
-                        if (Utils.checkExchangeOperator(dataModel, r1, p1, r2, p2)) {
-                            Node u1 = r1.removeCustomerAtIndex(p1);
-                            Node u2 = r2.removeCustomerAtIndex(p2);
-                            r1.insertAtPosition(p1, u2);
-                            r2.insertAtPosition(p2, u1);
-                            break outerLoopExchange;
-                        }
-                    }
-                }
-            }
+//            for (int p1 = 1; p1 < r1.getLength(); p1++) {
+//                if (r1.getCustomerAt(p1) == dataModel.getDepot()) continue;  // skip depot
+//                outerLoopExchange:
+//                for (int j = 0; j < curSolution.size(); j++) {  // iterate all remaining routes
+//                    Route r2 = curSolution.get(j);
+//                    for (int p2 = 1; p2 < r2.getLength(); p2++) {  // iterate all demand nodes in r2
+//                        if (r2.getCustomerAt(p2) == dataModel.getDepot()) continue;  // skip depot
+//                        if (Utils.checkExchangeOperator(dataModel, r1, p1, r2, p2)) {
+//                            Node u1 = r1.removeCustomerAtIndex(p1);
+//                            Node u2 = r2.removeCustomerAtIndex(p2);
+//                            r1.insertAtPosition(p1, u2);
+//                            r2.insertAtPosition(p2, u1);
+//                            break outerLoopExchange;
+//                        }
+//                    }
+//                }
+//            }
 
             // Try relocate operator
             // Relocate depending on the acceptance criterion: best-feasible
@@ -93,6 +93,7 @@ public class RelocateAlgorithm {
             if (a.size() != b.size()) return a.size() - b.size();
 //            else return Utils.compareTotalDistance(dataModel, a, b);
             else {  // compare shortest route length
+                // TODO: try to rationale this: why shorter route length works
                 int shortestRouteLengthA = a.stream().min(Comparator.comparingInt(Route::getLength)).get().getLength();
                 int shortestRouteLengthB = b.stream().min(Comparator.comparingInt(Route::getLength)).get().getLength();
                 return shortestRouteLengthA - shortestRouteLengthB;

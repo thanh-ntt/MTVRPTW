@@ -1,5 +1,6 @@
 import jdk.jshell.execution.Util;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -9,81 +10,133 @@ import java.util.Set;
  */
 public class ILS implements ConstructionAlgorithm {
     DataModel dataModel;
+
     @Override
     public List<Route> run(DataModel dataModel) {
         this.dataModel = dataModel;
-//        List<Route> initialSolution = new SolomonI1Algorithm().run(dataModel);
-//        List<Route> initialSolution = new ChangsAlgorithm().run(dataModel);
-//        List<Route> bestSolution = initialSolution;
-
-//        for (Parameter parameter : PARAMETERS) {
-//            List<Route> curSolution = runWithParameter(dataModel, initialSolution, parameter);
-//            if (curSolution.size() < bestSolution.size()) {
-//                bestSolution = curSolution;
-//            }
-//        }
-//        return bestSolution;
         List<Route> initialSolution = new SolomonI1Algorithm().run(dataModel);
         List<Route> curSolution = initialSolution;
-//        curSolution = OrOptAlgorithm.run(curSolution, dataModel);
-//        int numIterations = 0;
-//        while (numIterations++ < 100) {
-//            List<Route> nextSolution = RelocateAlgorithm.run(curSolution, dataModel, new Parameter());
-//            curSolution = nextSolution;  // accept all
-//        }
-//        return curSolution;
-
-//        // While termination condition not satisfied
-        int totalIterations = 0, maxNumIterations = 1000, maxNumIntensification = 1;
-        while (totalIterations < maxNumIterations) {
+        // While termination condition not satisfied
+        int countIterations = 0, numIterationThreshold = 1000, numIntensificationThreshold = 100;
+        outerWhile:
+        while (countIterations < numIterationThreshold) {
             int i = 0;
-            while (i++ < maxNumIntensification && totalIterations++ < maxNumIterations) {
+            while (i++ < numIntensificationThreshold && countIterations++ < numIterationThreshold) {
+                curSolution = OrOptAlgorithm.run(curSolution, dataModel);
                 List<Route> nextSolution = RelocateAlgorithm.run(curSolution, dataModel);
-                if (nextSolution.size() < curSolution.size()) {
-                    i = 0;
+                if (nextSolution.size() < curSolution.size()) {  // reduce # vehicle, restart algorithm
+                    curSolution = nextSolution;
+                    countIterations = 0;  // running numIterationThreshold again
+                    continue outerWhile;
+                } else {  // move to local solution
+                    exchangeAlgorithm(nextSolution);
+                    curSolution = nextSolution;  // accept all
                 }
-                curSolution = nextSolution;  // accept all
             }
             // Perturbation
-            curSolution = runPerturbation(curSolution);
-            curSolution = OrOptAlgorithm.run(curSolution, dataModel);
+//            curSolution = runPerturbation(curSolution);
+            perturb(curSolution);
+            assert Utils.isValidSolution(dataModel, curSolution);
         }
         return curSolution;
     }
 
-    int getShortestRouteLength(List<Route> solution) {
-        return solution.stream().mapToInt(Route::getLength).min().getAsInt();
+    void exchangeAlgorithm(List<Route> s) {
+        int n = s.size();
+        Random random = new Random(0);
+        int numExchangeThreshold = 50;
+        int numIterations = 0;
+        int count = 0;
+        while (count < numExchangeThreshold && numIterations < 100000) {
+            numIterations++;
+            int r1Idx = random.nextInt(n), r2Idx = random.nextInt(n);
+            if (r1Idx == r2Idx) continue;
+            Route r1 = s.get(r1Idx), r2 = s.get(r2Idx);
+            int p1 = random.nextInt(r1.getLength()), p2 = random.nextInt(r2.getLength());
+            Node u1 = r1.getCustomerAt(p1), u2 = r2.getCustomerAt(p2);
+            if (u1 == dataModel.getDepot() || u2 == dataModel.getDepot()) continue;
+            if (Utils.checkExchangeOperator(dataModel, r1, p1, r2, p2)) {
+                r1.removeCustomerAtIndex(p1);
+                r2.removeCustomerAtIndex(p2);
+                r1.insertAtPosition(p1, u2);
+                r2.insertAtPosition(p2, u1);
+                count++;
+            }
+        }
     }
-//
-//    List<Route> runPerturbation(List<Route> s1) {
-//        List<Route> s2 = Utils.deepCopySolution(s1);
-//        // Find shortest route
-//        Route shortestRoute = null;
-//        int shortestRouteLength = (int) 1e9;
-//        for (Route r : s2) {
-//            if (r.getLength() < shortestRouteLength) {
-//                shortestRouteLength = r.getLength();
-//                shortestRoute = r;
-//            }
-//        }
-//        // Re-route all other routes
-//        s2.remove(shortestRoute);
-//        Set<Node> customers = Utils.getRoutedCustomers(s2);
-//
-//        s2 = new SolomonI1Algorithm().runAllInitializationCriteria(dataModel, customers);
-//        if (s2.size() + 1 > s1.size()) return s1;
-//        s2.add(shortestRoute);
-//        assert Utils.isValidSolution(dataModel, s2);
-//        return s2;
-//    }
 
-    // TODO: bound this perturbation scheme, currently most random exchange fails
+    void perturb(List<Route> s) {
+        loop1:
+        for (int i = 0; i < s.size() - 1; i++) {
+            int l1 = s.get(i).getLength();
+            List<Integer> indicesR1 = new ArrayList<>();
+            indicesR1.add(l1 / 2);
+            for (int k = 1; k < l1 / 2 - 2; k++) {
+                indicesR1.add(l1 / 2 - k);
+                indicesR1.add(l1 / 2 + k);
+            }
+            for (int p1 : indicesR1) {
+                for (int j = i + 1; j < s.size(); j++) {
+                    if (twoOptStar(s.get(i), p1, s.get(j))) {
+                        continue loop1;
+                    }
+                }
+            }
+        }
+    }
+
+    boolean twoOptStar(Route r1, int p1, Route r2) {
+        Node depot = dataModel.getDepot();
+        int capacity = dataModel.getVehicleCapacity();
+        int l1 = r1.getLength(), l2 = r2.getLength();
+        List<Integer> indicesR1 = new ArrayList<>();
+        indicesR1.add(l1 / 2);
+        for (int i = 1; i < l1 / 2 - 2; i++) {  // candidate from 3rd node -> second last node
+            indicesR1.add(l1 / 2 - i);
+            indicesR1.add(l1 / 2 + i);
+        }
+        Node a1 = r1.getCustomerAt(p1), b1 = r1.getCustomerAt(p1 + 1);
+        // Compute r1 load up to p1
+        int r1Load = 0;
+        for (int i = p1; i >= 0 && r1.getCustomerAt(i) != depot; i--) {
+            r1Load += r1.getCustomerAt(i).demand;
+        }
+        int r2Load = 0;
+        for (int p2 = 0; p2 < l2 - 1; p2++) {
+            Node a2 = r2.getCustomerAt(p2), b2 = r2.getCustomerAt(p2 + 1);
+            r2Load = a2 == depot ? 0 : r2Load + a2.demand;
+
+            // Check feasibility
+            // check vehicle capacity
+            boolean checkCapacity = (r1Load + (r2.getVehicleLoadCurTrip(p2 + 1) - r2Load) <= capacity)
+                    && (r2Load + (r1.getVehicleLoadCurTrip(p1 + 1) - r1Load) <= capacity);
+            if (!checkCapacity) continue;
+
+            // check time feasibility
+            // Compute new arrival time at b1 and b2
+            double arrivalTimeB1 = r2.getStartingServiceTimeAt(p2) + a2.serviceTime + dataModel.dist(a2, b1);
+            double arrivalTimeB2 = r1.getStartingServiceTimeAt(p1) + a1.serviceTime + dataModel.dist(a1, b2);
+            double pushForwardB1 = Math.max(arrivalTimeB1, b1.readyTime) - r1.getStartingServiceTimeAt(p1 + 1);
+            double pushForwardB2 = Math.max(arrivalTimeB2, b2.readyTime) - r2.getStartingServiceTimeAt(p2 + 1);
+            boolean checkTime = r1.checkPushForwardTimeFromPosition(pushForwardB1, p1 + 1)
+                    && r2.checkPushForwardTimeFromPosition(pushForwardB2, p2 + 1);
+            if (!checkTime) continue;
+
+            // now we do 2-opt* exchange
+            Utils.exchangeTwoOptStar(dataModel, r1, p1, r2, p2);
+            return true;
+        }
+        return false;
+    }
+
     List<Route> runPerturbation(List<Route> s) {
         int n = s.size();
         Random random = new Random(0);
-        int numExchangeThreshold = 100;
+        int numExchangeThreshold = 200;
+        int numIterations = 0;
         int count = 0;
-        while (count < numExchangeThreshold) {
+        while (count < numExchangeThreshold && numIterations < 100000) {
+            numIterations++;
             int r1Idx = random.nextInt(n), r2Idx = random.nextInt(n);
             if (r1Idx == r2Idx) continue;
             Route r1 = s.get(r1Idx), r2 = s.get(r2Idx);

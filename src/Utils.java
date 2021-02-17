@@ -182,12 +182,10 @@ public class Utils {
         newRoutedPathR2.addAll(r1.routedPath.subList(p1 + 1, r1.getLength()));
 
         r1.routedPath = newRoutedPathR1;
-        r1.initializeArrivalTimes(r1.routedPath, 0);
-        r1.initializeVehicleLoad();
+        r1.initializeVariables();
 
         r2.routedPath = newRoutedPathR2;
-        r2.initializeArrivalTimes(r2.routedPath, 0);
-        r2.initializeVehicleLoad();
+        r2.initializeVariables();
     }
 
     /**

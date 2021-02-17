@@ -11,17 +11,15 @@ public class OrOpt2OptAlgorithm {
         // Use deep copy so that we can modify routes without changing the original solution
         List<Route> curSolution = Utils.deepCopySolution(solution);
         curSolution = orOpt(curSolution, dataModel);
-        return curSolution;
-//        List<Route> result = run2OptStarExchange(curSolution, dataModel);
-//        assert Utils.isValidSolution(dataModel, result);
-//        return result;
+        List<Route> result = run2OptStarExchange(curSolution, dataModel);
+        assert Utils.isValidSolution(dataModel, result);
+        return result;
     }
 
     static List<Route> orOpt(List<Route> solution, DataModel dataModel) {
         for (Route r : solution) {
             orOpt(r, dataModel);
         }
-        assert Utils.isValidSolution(dataModel, solution);
         return solution;
     }
 
@@ -102,8 +100,8 @@ public class OrOpt2OptAlgorithm {
                         if (saving <= EPSILON) continue;
 
                         // check vehicle capacity
-                        boolean checkCapacity = (r1Load + (r2.getVehicleLoadCurTrip(j) - r2Load) <= dataModel.getVehicleCapacity())
-                                && (r2Load + (r1.getVehicleLoadCurTrip(i) - r1Load) <= dataModel.getVehicleCapacity());
+                        boolean checkCapacity = (r1Load + (r2.getVehicleLoadCurTrip(j + 1) - r2Load) <= dataModel.getVehicleCapacity())
+                                && (r2Load + (r1.getVehicleLoadCurTrip(i + 1) - r1Load) <= dataModel.getVehicleCapacity());
                         if (!checkCapacity) continue;
 
                         // check time feasibility
