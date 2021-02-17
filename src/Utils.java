@@ -145,25 +145,27 @@ public class Utils {
 
     /**
      * Gain of relocating (inserting) customer at index p1 of route r1 into position p2 of route r2.
+     * Here we define the cost function as the difference in push forward time.
+     * The intuition is that we want to measure how inserting a customer to route r2 would make the route
+     * become more/less "relaxed" - the ability to insert more customers into the route (r2).
+     * A move that keeps the route r2 "relaxed" would be preferable.
+     * The total waiting time is a suitable candidate for the above objective, however, computing total waiting
+     * time is expensive, thus we approximate it with the push-forward time.
      */
-    public static double getCostRelocateOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2, Parameter parameter) {
+    public static double getCostRelocateOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2) {
         Node u1 = r1.getCustomerAt(p1), prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
-        Node next2 = r2.getCustomerAt(p2), prev2 = r2.getCustomerAt(p2 - 1);
-        double distanceCost = (dataModel.dist(prev2, u1) + dataModel.dist(u1, next2) + dataModel.dist(prev1, next1))
-                - (dataModel.dist(prev1, u1) + dataModel.dist(u1, next1) + dataModel.dist(prev2, next2));
+        Node next2 = p2 == r2.getLength() ? r2.depot : r2.getCustomerAt(p2), prev2 = r2.getCustomerAt(p2 - 1);
 
         double newServiceTimeAtNext1 = Math.max(r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.dist(prev1, next1), next1.readyTime);
         double pushForwardAtNext1 = newServiceTimeAtNext1 - r1.getStartingServiceTimeAt(p1 + 1);
 
         double newServiceTimeAtP2 = Math.max(r2.getStartingServiceTimeAt(p2 - 1) + prev2.serviceTime + dataModel.dist(prev2, u1), u1.readyTime);
         double newServiceTimeAtNext2 = Math.max(newServiceTimeAtP2 + u1.serviceTime + dataModel.dist(u1, next2), next2.readyTime);
-        double pushForwardAtNext2 = newServiceTimeAtNext2 - r2.getStartingServiceTimeAt(p2);  // p2 instead of p2 + 1 because haven't inserted yet
+        double pushForwardAtNext2 = newServiceTimeAtNext2 - (p2 == r2.getLength() ? r2.getLatestArrivalTimeAtDepot() : r2.getStartingServiceTimeAt(p2));  // p2 instead of p2 + 1 because haven't inserted yet
 
         // Total push-forward in time
         double timeCost = pushForwardAtNext1 + pushForwardAtNext2;
-
-        double cost = distanceCost * parameter.alpha1 + timeCost * parameter.alpha2;
-        return cost;
+        return timeCost;
     }
 
     /**
@@ -442,9 +444,8 @@ class RoutePositionPair {
 }
 
 class Parameter {
-    double mu, lambda, alpha1, alpha2;
-    public Parameter(double mu, double lambda, double alpha1, double alpha2) {
-        this.mu = mu;
+    double lambda, alpha1, alpha2;
+    public Parameter(double lambda, double alpha1, double alpha2) {
         this.lambda = lambda;
         this.alpha1 = alpha1;
         this.alpha2 = alpha2;
@@ -452,7 +453,6 @@ class Parameter {
 
     // Default parameters
     public Parameter() {
-        mu = 1;
         lambda = 2;
         alpha1 = 0;
         alpha2 = 1;

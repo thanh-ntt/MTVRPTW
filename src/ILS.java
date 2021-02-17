@@ -9,12 +9,10 @@ import java.util.Set;
  */
 public class ILS implements ConstructionAlgorithm {
     DataModel dataModel;
-    static final Parameter[] PARAMETERS = {new Parameter(1, 1, 1, 0), new Parameter(1, 2, 0.75, 0.25),
-            new Parameter(1, 1, 0.5, 0.5), new Parameter(1, 2, 0.25, 0.75), new Parameter(1, 1, 0, 1)};
     @Override
     public List<Route> run(DataModel dataModel) {
         this.dataModel = dataModel;
-        List<Route> initialSolution = new SolomonI1Algorithm().run(dataModel);
+//        List<Route> initialSolution = new SolomonI1Algorithm().run(dataModel);
 //        List<Route> initialSolution = new ChangsAlgorithm().run(dataModel);
 //        List<Route> bestSolution = initialSolution;
 
@@ -25,6 +23,7 @@ public class ILS implements ConstructionAlgorithm {
 //            }
 //        }
 //        return bestSolution;
+        List<Route> initialSolution = new SolomonI1Algorithm().run(dataModel);
         List<Route> curSolution = initialSolution;
 //        curSolution = OrOptAlgorithm.run(curSolution, dataModel);
 //        int numIterations = 0;
@@ -39,7 +38,7 @@ public class ILS implements ConstructionAlgorithm {
         while (totalIterations < maxNumIterations) {
             int i = 0;
             while (i++ < maxNumIntensification && totalIterations++ < maxNumIterations) {
-                List<Route> nextSolution = RelocateAlgorithm.run(curSolution, dataModel, new Parameter());
+                List<Route> nextSolution = RelocateAlgorithm.run(curSolution, dataModel);
                 if (nextSolution.size() < curSolution.size()) {
                     i = 0;
                 }
@@ -50,15 +49,6 @@ public class ILS implements ConstructionAlgorithm {
             curSolution = OrOptAlgorithm.run(curSolution, dataModel);
         }
         return curSolution;
-    }
-
-    List<Route> runWithParameter(DataModel dataModel, List<Route> initialSolution, Parameter parameter) {
-        List<Route> solution = Utils.deepCopySolution(initialSolution);
-        int numIterations = 0;
-        while (numIterations++ < 100) {
-            solution = RelocateAlgorithm.run(solution, dataModel, parameter);
-        }
-        return solution;
     }
 
     int getShortestRouteLength(List<Route> solution) {
@@ -87,6 +77,7 @@ public class ILS implements ConstructionAlgorithm {
 //        return s2;
 //    }
 
+    // TODO: bound this perturbation scheme, currently most random exchange fails
     List<Route> runPerturbation(List<Route> s) {
         int n = s.size();
         Random random = new Random(0);

@@ -104,6 +104,10 @@ public class DataModel {
         return unRoutedCustomers.stream().mapToDouble(c -> latestDepartureTimes[c.id]).min().orElseGet(() -> -1.0);
     }
 
+    public double getLatestDepartureTime(Node u) {
+        return latestDepartureTimes[u.id];
+    }
+
     public double dist(Node source, Node destination) {
         return distanceTable[source.id][destination.id];
     }

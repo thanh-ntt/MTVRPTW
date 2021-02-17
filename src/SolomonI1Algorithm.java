@@ -6,8 +6,9 @@ import java.util.stream.Collectors;
  * Here, we modify the insertion heuristic to take advantage of the multi-trip nature of the MTVRPTW.
  */
 public class SolomonI1Algorithm implements ConstructionAlgorithm {
-    static final Parameter[] PARAMETERS = {new Parameter(1, 1, 1, 0), new Parameter(1, 2, 1, 0),
-        new Parameter(1, 1, 0, 1), new Parameter(1, 2, 0, 1), new Parameter(1, 1, 0.5, 0.5), new Parameter(1, 2, 0.5, 0.5)};
+    static final Parameter[] PARAMETERS = {new Parameter(1, 1, 0), new Parameter(2, 1, 0),
+        new Parameter(1, 0, 1), new Parameter(2, 0, 1), new Parameter(1, 0.5, 0.5), new Parameter(2, 0.5, 0.5),
+        new Parameter(1, 0.25, 0.75), new Parameter(2, 0.25, 0.75), new Parameter(1, 0.75, 0.25), new Parameter(2, 0.75, 0.25)};
 
     /**
      * Here we try different initialization criteria as suggested by Solomon:
@@ -155,11 +156,20 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
         double dij = dataModel.dist(route.routedPath.get(p - 1), route.routedPath.get(p));
 
         // Route travel time increase, c11 in I1, Solomon, 1987
-        double c11 = diu + duj - parameter.mu * dij;
+        double c11 = diu + duj - dij;
         // compute service push forward in service starting time at customer ip, this is same as (bju - bj)
         double c12 = route.getPushForwardTimeAfterInsertion(u, p);
         // I1 insertion heuristic - Solomon, 1987
         double c1 = parameter.alpha1 * c11 + parameter.alpha2 * c12;
         return c1;
+    }
+}
+
+class SolomonI1AlgorithmResult {
+    List<Route> solution;
+    Parameter bestParam;
+    public SolomonI1AlgorithmResult(List<Route> s, Parameter p) {
+        solution = s;
+        bestParam = p;
     }
 }

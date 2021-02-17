@@ -183,6 +183,10 @@ public class Route {
         }
     }
 
+    public boolean canAppendAtLastPosition(Node u) {
+        return getLatestArrivalTimeAtDepot() <= dataModel.getLatestDepartureTime(u);
+    }
+
     /**
      * Inserting the new customer at the end of the route.
      * This is a simplified version of insertAtPosition.

@@ -6,7 +6,7 @@ import java.util.*;
  * Local search: relocate operator
  */
 public class RelocateAlgorithm {
-    public static List<Route> run(List<Route> solution, DataModel dataModel, Parameter parameter) {
+    public static List<Route> run(List<Route> solution, DataModel dataModel) {
         List<List<Route>> neighbourSolutions = new ArrayList<>();
         List<Integer> selectedRouteIndices = selectRouteIndices(solution);
         for (int idx : selectedRouteIndices) {
@@ -48,9 +48,10 @@ public class RelocateAlgorithm {
                 int r2Idx = -1, p2Idx = -1;  // index of the route and position of the customer to exchange
                 for (int j = 0; j < curSolution.size(); j++) {
                     Route r2 = curSolution.get(j);
-                    for (int p2 = 1; p2 < r2.getLength(); p2++) {
-                        if (r2.canInsertCustomerAt(p2, u)) {
-                            double cost = Utils.getCostRelocateOperator(dataModel, r1, p1, r2, p2, parameter);
+                    for (int p2 = 1; p2 <= r2.getLength(); p2++) {
+                        if ((p2 < r2.getLength() && r2.canInsertCustomerAt(p2, u))
+                                || (p2 == r2.getLength() && r2.canAppendAtLastPosition(u))) {
+                            double cost = Utils.getCostRelocateOperator(dataModel, r1, p1, r2, p2);
                             if (cost < minCost) {
                                 minCost = cost;
                                 r2Idx = j;
@@ -63,12 +64,18 @@ public class RelocateAlgorithm {
                     Node u1 = r1.removeCustomerAtIndex(p1);
                     assert u1 == u;
                     Route r2 = curSolution.get(r2Idx);
-                    r2.insertAtPosition(p2Idx, u1);
+                    if (p2Idx == r2.getLength()) {
+                        r2.appendAtLastPosition(u1);
+                        r2.appendAtLastPosition(dataModel.getDepot());
+                    } else {
+                        r2.insertAtPosition(p2Idx, u1);
+                    }
 
                     assert Utils.isValidRoute(dataModel, r2);
-                    p1--;  // Decrease p1 since already remove customer at p1
+                    // No need to increase p1 since already remove customer at p1
+                } else {
+                    p1++;
                 }
-                p1++;
             }
 
             // Add back selected route if needed

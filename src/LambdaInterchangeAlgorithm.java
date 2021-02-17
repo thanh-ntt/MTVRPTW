@@ -78,7 +78,7 @@ public class LambdaInterchangeAlgorithm {
                 if (r1.canInsertCustomerAt(p1, u2) && r2.canRemoveCustomerAt(p2)) {
 //                    double distanceCost = (dataModel.getDistance(prev1, u2) + dataModel.getDistance(u2, next1) + dataModel.getDistance(prev2, next2))
 //                            - (dataModel.getDistance(prev2, u2) + dataModel.getDistance(u2, next2) + dataModel.getDistance(prev1, next1));
-                    double cost = Utils.getCostRelocateOperator(dataModel, r2, p2, r1, p1, new Parameter());
+                    double cost = Utils.getCostRelocateOperator(dataModel, r2, p2, r1, p1);
                     if (r1.getNumDemandNodes() == 1) cost = (int) -1e9;
                     if (cost < minCost) {  // saving
                         minCost = cost;

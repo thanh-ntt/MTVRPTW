@@ -51,7 +51,7 @@ public class MTVRPTW {
                     assert Utils.isValidSolution(dataModel, solutions[j][i]);
                 }
                 // Local search
-                solutions[results.length - 2][i] = RelocateAlgorithm.run(solutions[1][i], dataModel, new Parameter());
+                solutions[results.length - 2][i] = RelocateAlgorithm.run(solutions[1][i], dataModel);
                 results[results.length - 2][i] = solutions[results.length - 2][i].size();
                 // ILS
                 solutions[results.length - 1][i] = new ILS().run(dataModel);
@@ -129,7 +129,7 @@ public class MTVRPTW {
             for (int i = 0; i < inputFiles.length; i++) {
                 DataModel dataModel = new DataModel(testDirectory + "/" + inputFiles[i], configs);
                 List<Route> initialSolution = new SolomonI1Algorithm().run(dataModel);
-                solution[i] = RelocateAlgorithm.run(initialSolution, dataModel, new Parameter());
+                solution[i] = RelocateAlgorithm.run(initialSolution, dataModel);
 //                solution[i] = OrOpt2OptAlgorithm.run(initialSolution, dataModel);
 
                 assert Utils.isValidSolution(dataModel, solution[i]);
