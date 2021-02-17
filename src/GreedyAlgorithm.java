@@ -66,11 +66,11 @@ public class GreedyAlgorithm implements ConstructionAlgorithm {
             if (route.checkCapacityConstraint(route.getLength() - 1, u.demand)) {
                 Node prevCustomer = route.getCustomerAt(route.getLength() - 1);
                 double arrivalTimeAtCustomer = route.getStartingServiceTimeAt(route.getLength() - 1)
-                        + prevCustomer.serviceTime + dataModel.getDistance(prevCustomer, u);
+                        + prevCustomer.serviceTime + dataModel.dist(prevCustomer, u);
                 double startingServiceTime = Math.max(arrivalTimeAtCustomer, u.readyTime);
                 double endingServiceTime = startingServiceTime + u.serviceTime;
                 // Also need to check if the vehicle could return to depot in time
-                double arrivalTimeAtDepot = endingServiceTime + dataModel.getDistanceFromDepot(u);
+                double arrivalTimeAtDepot = endingServiceTime + dataModel.distFromDepot(u);
                 if (arrivalTimeAtCustomer <= u.dueTime
                         && arrivalTimeAtDepot <= dataModel.getDepot().dueTime
                         && endingServiceTime < earliestTime) {

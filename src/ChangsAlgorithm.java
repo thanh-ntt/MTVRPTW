@@ -161,7 +161,7 @@ public class ChangsAlgorithm implements ConstructionAlgorithm {
     List<Route> constructRoutesParallel(List<Node> cluster, double departureTimeFromDepot) {
         List<Node> orderedCustomers = new ArrayList<>(cluster);
         // Step 2: rank the demand nodes in decreasing order of travel time from depot
-        orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
+        orderedCustomers.sort((a, b) -> Double.compare(dataModel.distFromDepot(b), dataModel.distFromDepot(a)));
         List<Route> bestRoutes = SolomonI1Algorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
 
         orderedCustomers.sort(Comparator.comparingDouble(a -> a.dueTime));

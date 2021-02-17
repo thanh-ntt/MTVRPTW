@@ -112,7 +112,7 @@ public class ClusterRouting implements ConstructionAlgorithm {
     List<Route> constructRoute(List<Node> cluster) {
         List<Node> orderedCustomers = new ArrayList<>(cluster);
         // Rank the demand nodes in decreasing order of travel time from depot
-        orderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
+        orderedCustomers.sort((a, b) -> Double.compare(dataModel.distFromDepot(b), dataModel.distFromDepot(a)));
 //        orderedCustomers.sort(Comparator.comparingInt(a -> a.readyTime));
 
         List<Route> bestRoutes = SolomonI1Algorithm.run(orderedCustomers, 0, dataModel);

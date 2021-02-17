@@ -7,38 +7,30 @@ import java.util.stream.Collectors;
  */
 public class SolomonI1Algorithm implements ConstructionAlgorithm {
     static final Parameter[] PARAMETERS = {new Parameter(1, 1, 1, 0), new Parameter(1, 2, 1, 0),
-        new Parameter(1, 1, 0, 1), new Parameter(1, 2, 0, 1)};
-//    static final Logger logger = Logger.getLogger(MTVRPTW.class.getName());
-
-    @Override
-    public List<Route> run(DataModel dataModel) {
-        List<Route> solution = runAllInitializationCriteria(dataModel, dataModel.getDemandNodes());
-        assert Utils.isValidSolution(dataModel, solution);
-        return solution;
-    }
+        new Parameter(1, 1, 0, 1), new Parameter(1, 2, 0, 1), new Parameter(1, 1, 0.5, 0.5), new Parameter(1, 2, 0.5, 0.5)};
 
     /**
      * Here we try different initialization criteria as suggested by Solomon:
      *  1. Farthest un-routed customer
      *  2. Un-routed customer with earliest deadline
      */
-    List<Route> runAllInitializationCriteria(DataModel dataModel, Set<Node> unRoutedCustomers) {
+    @Override
+    public List<Route> run(DataModel dataModel) {
+        Set<Node> unRoutedCustomers = dataModel.getDemandNodes();
         List<Node> firstOrderedCustomers = new ArrayList<>(unRoutedCustomers);
-        firstOrderedCustomers.sort((a, b) -> Double.compare(dataModel.getDistanceFromDepot(b), dataModel.getDistanceFromDepot(a)));
+        firstOrderedCustomers.sort((a, b) -> Double.compare(dataModel.distFromDepot(b), dataModel.distFromDepot(a)));
 
         List<Node> secondOrderedCustomers = new ArrayList<>(unRoutedCustomers);
         secondOrderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
-
-//        List<Node> thirdOrderedCustomers = new ArrayList<>(unRoutedCustomers);
-//        Collections.shuffle(thirdOrderedCustomers);
 
         List<List<Node>> customerSets = new ArrayList<>(Arrays.asList(firstOrderedCustomers, secondOrderedCustomers));
         List<List<Route>> solutions = customerSets.stream().map(orderedCustomers -> run(orderedCustomers, dataModel.getDepot().readyTime, dataModel)).collect(Collectors.toList());
 
         List<Route> bestSolution = null;
         for (List<Route> solution : solutions) {
-            if (bestSolution == null || solution.size() < bestSolution.size())bestSolution = solution;
+            if (bestSolution == null || solution.size() < bestSolution.size()) bestSolution = solution;
         }
+        assert Utils.isValidSolution(dataModel, bestSolution);
         return bestSolution;
     }
 
@@ -142,7 +134,7 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
             }
         }
         if (minC1 == null) return null;
-        double d0u = dataModel.getDistanceFromDepot(u);
+        double d0u = dataModel.distFromDepot(u);
         double c2 = parameter.lambda * d0u - minC1.value;
         return new ValueAndPosition(c2, minC1.position);
     }
@@ -158,9 +150,9 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
         // Check capacity constraint and time constraint
         if (!route.canInsertCustomerAt(p, u)) return null;
 
-        double diu = dataModel.getDistance(route.routedPath.get(p - 1), u);
-        double duj = dataModel.getDistance(u, route.routedPath.get(p));
-        double dij = dataModel.getDistance(route.routedPath.get(p - 1), route.routedPath.get(p));
+        double diu = dataModel.dist(route.routedPath.get(p - 1), u);
+        double duj = dataModel.dist(u, route.routedPath.get(p));
+        double dij = dataModel.dist(route.routedPath.get(p - 1), route.routedPath.get(p));
 
         // Route travel time increase, c11 in I1, Solomon, 1987
         double c11 = diu + duj - parameter.mu * dij;
@@ -169,23 +161,5 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
         // I1 insertion heuristic - Solomon, 1987
         double c1 = parameter.alpha1 * c11 + parameter.alpha2 * c12;
         return c1;
-    }
-}
-
-class Parameter {
-    double mu, lambda, alpha1, alpha2;
-    public Parameter(double a, double b, double c, double d) {
-        mu = a;
-        lambda = b;
-        alpha1 = c;
-        alpha2 = d;
-    }
-
-    // Default parameters
-    public Parameter() {
-        mu = 1;
-        lambda = 2;
-        alpha1 = 0;
-        alpha2 = 1;
     }
 }

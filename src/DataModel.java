@@ -13,8 +13,8 @@ public class DataModel {
     double[] latestDepartureTimes;  // latest time the vehicle can leave the depot and still serve each customer
     int vehicleCapacity;
     Node[] nodes;  // depot + all customers
-    int numCustomers = 100;
-    int numNodes = 101;  // depot + customers
+    int numCustomers;
+    int numNodes;  // depot + customers
 
     Configurations configs;
 
@@ -23,12 +23,6 @@ public class DataModel {
     public DataModel(String inputFilePath, Configurations configs) {
         // Read configs
         this.configs = configs;
-        distanceTable = new double[numNodes][numNodes];
-        timeWindows = new int[numNodes][2];
-        serviceTimes = new int[numNodes];
-        demands = new int[numNodes];
-        latestDepartureTimes = new double[numNodes];
-        nodes = new Node[numNodes];
         try {
             this.readInputs(inputFilePath);
         }  catch (FileNotFoundException e) {
@@ -41,10 +35,22 @@ public class DataModel {
         File file = new File(inputFilePath);
         Scanner scan = new Scanner(file);
 
+        for (int i = 0; i < 4; i++) scan.nextLine();
+        numCustomers = configs.numCustomers;
+        numNodes = numCustomers + 1;
+        scan.nextInt();
         setVehicleCapacity(scan.nextInt());
+        for (int i = 0; i < 5; i++) scan.nextLine();
+
+        distanceTable = new double[numNodes][numNodes];
+        timeWindows = new int[numNodes][2];
+        serviceTimes = new int[numNodes];
+        demands = new int[numNodes];
+        latestDepartureTimes = new double[numNodes];
+        nodes = new Node[numNodes];
 
         for (int i = 0; i < numNodes; i++) {
-            nodes[i] = new Node(scan.nextInt() - 1, scan.nextDouble(), scan.nextDouble(),
+            nodes[i] = new Node(scan.nextInt(), scan.nextDouble(), scan.nextDouble(),
                     (int) scan.nextDouble(), (int) scan.nextDouble(), (int) scan.nextDouble(), (int) scan.nextDouble());
         }
 
@@ -56,7 +62,7 @@ public class DataModel {
             timeWindows[i][1] = nodes[i].dueTime;
             serviceTimes[i] = nodes[i].serviceTime;
             demands[i] = nodes[i].demand;
-            latestDepartureTimes[i] = nodes[i].dueTime - getDistanceFromDepot(nodes[i]);
+            latestDepartureTimes[i] = Math.min(nodes[i].dueTime - distFromDepot(nodes[i]), nodes[0].dueTime - 2 * distFromDepot(nodes[i]) - nodes[i].serviceTime);
         }
     }
 
@@ -71,8 +77,6 @@ public class DataModel {
 
     void setVehicleCapacity(int capacity) {
         this.vehicleCapacity = (int) (capacity * configs.capacityRatio);
-        for (int demand : demands)
-            assert this.vehicleCapacity >= demand;
     }
 
     public int getDeltaThreshold() {
@@ -92,7 +96,7 @@ public class DataModel {
         return demandNodes;
     }
 
-    public double getDistanceFromDepot(Node node) {
+    public double distFromDepot(Node node) {
         return distanceTable[node.id][0];
     }
 
@@ -100,7 +104,7 @@ public class DataModel {
         return unRoutedCustomers.stream().mapToDouble(c -> latestDepartureTimes[c.id]).min().orElseGet(() -> -1.0);
     }
 
-    public double getDistance(Node source, Node destination) {
+    public double dist(Node source, Node destination) {
         return distanceTable[source.id][destination.id];
     }
 

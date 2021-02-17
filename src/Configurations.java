@@ -4,13 +4,14 @@ import java.util.Scanner;
 
 public class Configurations {
     public final int configId;
+    public int numCustomers;
     public int numClustersThreshold;
     public double capacityRatio;
     public int deltaThreshold;
-    public double distanceRatio, timeRatio;
     public int exchangeOperatorAcceptanceCriterion, relocateOperatorAcceptanceCriterion;
-    public Configurations(int id, String filePath) {
+    public Configurations(int id, int n, String filePath) {
         configId = id;
+        numCustomers = n;
         readConfigurations(filePath);
     }
 
@@ -21,8 +22,6 @@ public class Configurations {
             numClustersThreshold = scan.nextInt();
             capacityRatio = scan.nextDouble();
             deltaThreshold = scan.nextInt();
-            distanceRatio = scan.nextDouble();
-            timeRatio = scan.nextDouble();
             exchangeOperatorAcceptanceCriterion = scan.nextInt();
             relocateOperatorAcceptanceCriterion = scan.nextInt();
         }  catch (FileNotFoundException e) {
