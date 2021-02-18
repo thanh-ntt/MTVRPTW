@@ -11,10 +11,40 @@ public class ILS implements ConstructionAlgorithm {
     @Override
     public List<Route> run(DataModel dataModel) {
         this.dataModel = dataModel;
+        List<Route> s1 = runWithNumExchanges(dataModel, 10);
+        List<Route> s2 = runWithNumExchanges(dataModel, 100);
+        return s1.size() > s2.size() ? s2 : s1;
+//        List<Route> initialSolution = new SolomonI1Algorithm().run(dataModel);
+//        List<Route> curSolution = initialSolution;
+//        // While termination condition not satisfied
+//        int countIterations = 0, numIterationThreshold = 1000, numIntensificationThreshold = 100;
+//        outerWhile:
+//        while (countIterations < numIterationThreshold) {
+//            int i = 0;
+//            while (i++ < numIntensificationThreshold && countIterations++ < numIterationThreshold) {
+//                curSolution = OrOptAlgorithm.run(curSolution, dataModel);
+//                List<Route> nextSolution = RelocateAlgorithm.run(curSolution, dataModel);
+//                if (nextSolution.size() < curSolution.size()) {  // reduce # vehicle, restart algorithm
+//                    curSolution = nextSolution;
+//                    countIterations = 0;  // running numIterationThreshold again
+//                    continue outerWhile;
+//                } else {  // move to local solution
+//                    exchangeAlgorithm(nextSolution);
+//                    curSolution = nextSolution;  // accept all
+//                }
+//            }
+//            // Perturbation
+//            perturb2OptStar(curSolution);
+//        }
+//        assert Utils.isValidSolution(dataModel, curSolution);
+//        return curSolution;
+    }
+
+    public List<Route> runWithNumExchanges(DataModel dataModel, int numExchangeThreshold) {
         List<Route> initialSolution = new SolomonI1Algorithm().run(dataModel);
         List<Route> curSolution = initialSolution;
         // While termination condition not satisfied
-        int countIterations = 0, numIterationThreshold = 10000, numIntensificationThreshold = 100;
+        int countIterations = 0, numIterationThreshold = 5000, numIntensificationThreshold = 100;
         outerWhile:
         while (countIterations < numIterationThreshold) {
             int i = 0;
@@ -26,7 +56,7 @@ public class ILS implements ConstructionAlgorithm {
                     countIterations = 0;  // running numIterationThreshold again
                     continue outerWhile;
                 } else {  // move to local solution
-                    exchangeAlgorithm(nextSolution);
+                    exchangeAlgorithm(nextSolution, numExchangeThreshold);
                     curSolution = nextSolution;  // accept all
                 }
             }
@@ -37,10 +67,10 @@ public class ILS implements ConstructionAlgorithm {
         return curSolution;
     }
 
-    void exchangeAlgorithm(List<Route> s) {
+    void exchangeAlgorithm(List<Route> s, int numExchangeThreshold) {
         int n = s.size();
         Random random = new Random(0);
-        int numExchangeThreshold = 25;
+//        int numExchangeThreshold = 100;
         int numIterations = 0;
         int count = 0;
         while (count < numExchangeThreshold && numIterations < 100000) {

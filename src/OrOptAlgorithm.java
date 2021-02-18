@@ -10,7 +10,8 @@ public class OrOptAlgorithm {
         // Use deep copy so that we can modify routes without changing the original solution
         List<Route> curSolution = Utils.deepCopySolution(solution);
         for (Route r : curSolution) {
-            orOpt(r, dataModel);
+//            orOpt(r, dataModel);
+            orOptBestImproving(r, dataModel);
         }
         return curSolution;
     }
@@ -19,9 +20,9 @@ public class OrOptAlgorithm {
         if (route.getLength() <= 3) return;
         int n = route.getLength();
 
-        for (int segmentLength = 3; segmentLength >= 1; segmentLength--) {
-            double minCost = 0;
-            outerLoop:
+        for (int segmentLength = 1; segmentLength <= 3; segmentLength++) {
+            double minCost = 1e9;
+            List<Node> bestPath = null;
             for (int i = 0; i < n - segmentLength - 1; i++) {
                 Node x1 = route.getCustomerAt(i), x2 = route.getCustomerAt(i + 1);
                 int j = i + segmentLength;
@@ -46,23 +47,26 @@ public class OrOptAlgorithm {
                         newPath.addAll(oldPath.subList(k + 1, n));  // [z2, 0]
                     }
 
-                    if (!Utils.checkRoutedPathFeasibility(dataModel, newPath)) continue;
-
                     // same cost function calculation for both cases
                     // minimize the cost -> compute f(after) - f(before)
                     double distanceCost = dataModel.dist(x1, y2) + dataModel.dist(z1, x2) + dataModel.dist(y1, z2)
                             - (dataModel.dist(x1, x2) + dataModel.dist(y1, y2) + dataModel.dist(z1, z2));
                     // Incorporate the time aspect into the cost function (additional to original cost function)
-                    double waitingTimeCost = Utils.getRoutedPathWaitingTime(dataModel, newPath) - Utils.getRoutedPathWaitingTime(dataModel, oldPath);
+//                    double waitingTimeCost = Utils.getRoutedPathWaitingTime(dataModel, newPath) - Utils.getRoutedPathWaitingTime(dataModel, oldPath);
 
-                    double cost = distanceCost + waitingTimeCost;
-                    if (cost + EPSILON < 0) {  // gain
-                        route.routedPath = newPath;
-                        route.initializeVariables();
-                        assert Utils.isValidRoute(dataModel, route);
-                        break outerLoop;
+//                    double cost = distanceCost + waitingTimeCost;
+                    double cost = distanceCost;
+                    // we put the check route feasibility here to optimize the check (only check if the cost < minCost)
+                    if (cost < minCost && Utils.checkRoutedPathFeasibility(dataModel, newPath)) {
+                        minCost = cost;
+                        bestPath = newPath;
                     }
                 }
+            }
+            if (bestPath != null) {
+                route.routedPath = bestPath;
+                route.initializeVariables();
+                assert Utils.isValidRoute(dataModel, route);
             }
         }
     }
