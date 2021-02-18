@@ -15,6 +15,58 @@ public class OrOptAlgorithm {
         return curSolution;
     }
 
+    static void orOptBestImproving(Route route, DataModel dataModel) {
+        if (route.getLength() <= 3) return;
+        int n = route.getLength();
+
+        for (int segmentLength = 3; segmentLength >= 1; segmentLength--) {
+            double minCost = 0;
+            outerLoop:
+            for (int i = 0; i < n - segmentLength - 1; i++) {
+                Node x1 = route.getCustomerAt(i), x2 = route.getCustomerAt(i + 1);
+                int j = i + segmentLength;
+                Node y1 = route.getCustomerAt(j), y2 = route.getCustomerAt(j + 1);
+                for (int k = 0; k < n - 1; k++) {
+                    if (k >= i && k <= j) continue;
+                    Node z1 = route.getCustomerAt(k), z2 = route.getCustomerAt(k + 1);
+
+                    // compute cost function, check time feasibility
+                    // first construct the new route
+                    List<Node> oldPath = route.routedPath;
+                    List<Node> newPath = new ArrayList<>();
+                    if (k < i) {
+                        newPath.addAll(oldPath.subList(0, k + 1));  // [0, z1]
+                        newPath.addAll(oldPath.subList(i + 1, j + 1));  // [x2, y1]
+                        newPath.addAll(oldPath.subList(k + 1, i + 1));  // [z2, x1]
+                        newPath.addAll(oldPath.subList(j + 1, n));  // [y2, 0]
+                    } else {
+                        newPath.addAll(oldPath.subList(0, i + 1));  // [0, x1]
+                        newPath.addAll(oldPath.subList(j + 1, k + 1));  // [y2, z1]
+                        newPath.addAll(oldPath.subList(i + 1, j + 1));  // [x2, y1]
+                        newPath.addAll(oldPath.subList(k + 1, n));  // [z2, 0]
+                    }
+
+                    if (!Utils.checkRoutedPathFeasibility(dataModel, newPath)) continue;
+
+                    // same cost function calculation for both cases
+                    // minimize the cost -> compute f(after) - f(before)
+                    double distanceCost = dataModel.dist(x1, y2) + dataModel.dist(z1, x2) + dataModel.dist(y1, z2)
+                            - (dataModel.dist(x1, x2) + dataModel.dist(y1, y2) + dataModel.dist(z1, z2));
+                    // Incorporate the time aspect into the cost function (additional to original cost function)
+                    double waitingTimeCost = Utils.getRoutedPathWaitingTime(dataModel, newPath) - Utils.getRoutedPathWaitingTime(dataModel, oldPath);
+
+                    double cost = distanceCost + waitingTimeCost;
+                    if (cost + EPSILON < 0) {  // gain
+                        route.routedPath = newPath;
+                        route.initializeVariables();
+                        assert Utils.isValidRoute(dataModel, route);
+                        break outerLoop;
+                    }
+                }
+            }
+        }
+    }
+
     static void orOpt(Route route, DataModel dataModel) {
         int n = route.getLength();
         if (route.getLength() <= 3) return;

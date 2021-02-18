@@ -15,7 +15,6 @@ public class ILS implements ConstructionAlgorithm {
         List<Route> curSolution = initialSolution;
         // While termination condition not satisfied
         int countIterations = 0, numIterationThreshold = 10000, numIntensificationThreshold = 100;
-        int num2OptRun = 0, numPerturbations = 0;
         outerWhile:
         while (countIterations < numIterationThreshold) {
             int i = 0;
@@ -32,10 +31,8 @@ public class ILS implements ConstructionAlgorithm {
                 }
             }
             // Perturbation
-            num2OptRun += perturb(curSolution);
-            numPerturbations++;
+            perturb2OptStar(curSolution);
         }
-//        System.out.println("Average # 2-opt: " + 1.0 * num2OptRun / numPerturbations);
         assert Utils.isValidSolution(dataModel, curSolution);
         return curSolution;
     }
@@ -89,21 +86,51 @@ public class ILS implements ConstructionAlgorithm {
     }
 
     void perturb2OptStar(List<Route> s) {
-        Node depot = dataModel.getDepot();
         for (int r1Idx = 0; r1Idx < s.size() - 1; r1Idx++) {
-            Route r1 = s.get(r1Idx);
-            for (int r2Idx = 0; r2Idx < s.size(); r2Idx++) {
-                Route r2 = s.get(r2Idx);
-                // Find the best 2-opt* exchange
-                for (int p1 = 0; p1 < r1.getLength() - 1; p1++) {
-                    for (int p2 = 0; p2 < r2.getLength() - 1; p2++) {
-                        Node x1 = r1.getCustomerAt(p1), y1 = r1.getCustomerAt(p1 + 1);
-                        Node x2 = r2.getCustomerAt(p2), y2 = r2.getCustomerAt(p2 + 1);
-                        if (x1 == depot && x2 == depot) continue;
+            for (int r2Idx = r1Idx + 1; r2Idx < s.size(); r2Idx++) {
+                twoOptStar(s.get(r1Idx), s.get(r2Idx));
+            }
+        }
+    }
 
-                    }
+    void twoOptStar(Route r1, Route r2) {
+        double minCost = 1e9;
+        int bestP1 = -1, bestP2 = -1;
+        int r1Load = 0, r2Load = 0;
+        // Find the best 2-opt* exchange
+        for (int p1 = 0; p1 < r1.getLength() - 1; p1++) {
+            Node a1 = r1.getCustomerAt(p1), b1 = r1.getCustomerAt(p1 + 1);
+            r1Load = a1 == dataModel.getDepot() ? 0 : r1Load + a1.demand;
+            for (int p2 = 0; p2 < r2.getLength() - 1; p2++) {
+                Node a2 = r2.getCustomerAt(p2), b2 = r2.getCustomerAt(p2 + 1);
+                if (a1 == dataModel.getDepot() && a2 == dataModel.getDepot()) continue;
+                r2Load = a2 == dataModel.getDepot() ? 0 : r2Load + a2.demand;
+
+                // check vehicle capacity
+                boolean checkCapacity = (r1Load + (r2.getVehicleLoadCurTrip(p2 + 1) - r2Load) <= dataModel.getVehicleCapacity())
+                        && (r2Load + (r1.getVehicleLoadCurTrip(p1 + 1) - r1Load) <= dataModel.getVehicleCapacity());
+                if (!checkCapacity) continue;
+
+                // check time feasibility
+                // Compute new arrival time at b1 and b2
+                double arrivalTimeB1 = r2.getStartingServiceTimeAt(p2) + a2.serviceTime + dataModel.dist(a2, b1);
+                double arrivalTimeB2 = r1.getStartingServiceTimeAt(p1) + a1.serviceTime + dataModel.dist(a1, b2);
+                double pushForwardB1 = Math.max(arrivalTimeB1, b1.readyTime) - r1.getStartingServiceTimeAt(p1 + 1);
+                double pushForwardB2 = Math.max(arrivalTimeB2, b2.readyTime) - r2.getStartingServiceTimeAt(p2 + 1);
+                boolean checkTime = r1.checkPushForwardTimeFromPosition(pushForwardB1, p1 + 1)
+                        && r2.checkPushForwardTimeFromPosition(pushForwardB2, p2 + 1);
+                if (!checkTime) continue;
+
+                double cost = pushForwardB1 + pushForwardB2;
+                if (cost < minCost) {
+                    minCost = cost;
+                    bestP1 = p1;
+                    bestP2 = p2;
                 }
             }
+        }
+        if (bestP1 != -1) {
+            Utils.exchangeTwoOptStar(dataModel, r1, bestP1, r2, bestP2);
         }
     }
 
