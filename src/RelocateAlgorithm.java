@@ -8,6 +8,7 @@ import java.util.*;
 public class RelocateAlgorithm {
     public static List<Route> run(List<Route> solution, DataModel dataModel) {
         List<List<Route>> neighbourSolutions = new ArrayList<>();
+//        neighbourSolutions.add(solution);  // also add current solution to the neighborhood
         List<Integer> selectedRouteIndices = selectRouteIndices(solution);
         for (int idx : selectedRouteIndices) {
             // Use deep copy so that we can modify routes without changing the original solution
