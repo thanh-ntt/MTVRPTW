@@ -5,10 +5,10 @@ import java.util.stream.Collectors;
  * A modification of the Solomon's I1 insertion heuristic (Solomon, 1987).
  * Here, we modify the insertion heuristic to take advantage of the multi-trip nature of the MTVRPTW.
  */
-public class SolomonI1Algorithm implements ConstructionAlgorithm {
+public class MTSolomonAlgorithm implements ConstructionAlgorithm {
     static final Parameter[] PARAMETERS = {new Parameter(1, 1, 0), new Parameter(2, 1, 0),
-        new Parameter(1, 0, 1), new Parameter(2, 0, 1), new Parameter(1, 0.5, 0.5), new Parameter(2, 0.5, 0.5),
-        new Parameter(1, 0.25, 0.75), new Parameter(2, 0.25, 0.75), new Parameter(1, 0.75, 0.25), new Parameter(2, 0.75, 0.25)};
+        new Parameter(1, 0, 1), new Parameter(2, 0, 1), new Parameter(1, 0.5, 0.5), new Parameter(2, 0.5, 0.5)};
+//        new Parameter(1, 0.25, 0.75), new Parameter(2, 0.25, 0.75), new Parameter(1, 0.75, 0.25), new Parameter(2, 0.75, 0.25)};
 
     /**
      * Here we try different initialization criteria as suggested by Solomon:
@@ -55,6 +55,29 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
             }
         }
         return bestSolution;
+    }
+
+    /**
+     * Similar to the overwrite run method, but this method returns all solutions, not just the best solution.
+     * @param dataModel
+     * @return
+     */
+    public static List<List<Route>> runGetAllSolutions(DataModel dataModel) {
+        Set<Node> unRoutedCustomers = dataModel.getDemandNodes();
+        List<Node> firstOrderedCustomers = new ArrayList<>(unRoutedCustomers);
+        firstOrderedCustomers.sort((a, b) -> Double.compare(dataModel.distFromDepot(b), dataModel.distFromDepot(a)));
+
+        List<Node> secondOrderedCustomers = new ArrayList<>(unRoutedCustomers);
+        secondOrderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
+
+        List<List<Node>> customerSets = new ArrayList<>(Arrays.asList(firstOrderedCustomers, secondOrderedCustomers));
+        List<List<Route>> solutions = new ArrayList<>();
+
+        for (Parameter parameter : PARAMETERS) {
+            List<Route> s = customerSets.stream().map(customerSet -> runWithParameter(customerSet, 0, dataModel, parameter)).min(Comparator.comparingInt(List::size)).get();
+            solutions.add(s);
+        }
+        return solutions;
     }
 
     public static List<Route> runWithParameter(List<Node> orderedCustomers, double departureTimeFromDepot,
@@ -162,14 +185,5 @@ public class SolomonI1Algorithm implements ConstructionAlgorithm {
         // I1 insertion heuristic - Solomon, 1987
         double c1 = parameter.alpha1 * c11 + parameter.alpha2 * c12;
         return c1;
-    }
-}
-
-class SolomonI1AlgorithmResult {
-    List<Route> solution;
-    Parameter bestParam;
-    public SolomonI1AlgorithmResult(List<Route> s, Parameter p) {
-        solution = s;
-        bestParam = p;
     }
 }

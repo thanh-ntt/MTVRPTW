@@ -84,7 +84,6 @@ public class DataModel {
     }
 
     public int getVehicleCapacity() {
-        assert vehicleCapacity > 0;
         return vehicleCapacity;
     }
 

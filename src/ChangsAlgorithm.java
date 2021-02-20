@@ -162,10 +162,10 @@ public class ChangsAlgorithm implements ConstructionAlgorithm {
         List<Node> orderedCustomers = new ArrayList<>(cluster);
         // Step 2: rank the demand nodes in decreasing order of travel time from depot
         orderedCustomers.sort((a, b) -> Double.compare(dataModel.distFromDepot(b), dataModel.distFromDepot(a)));
-        List<Route> bestRoutes = SolomonI1Algorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
+        List<Route> bestRoutes = MTSolomonAlgorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
 
         orderedCustomers.sort(Comparator.comparingDouble(a -> a.dueTime));
-        List<Route> bestRoutes2 = SolomonI1Algorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
+        List<Route> bestRoutes2 = MTSolomonAlgorithm.run(orderedCustomers, departureTimeFromDepot, dataModel);
 
         bestRoutes = bestRoutes.size() < bestRoutes2.size() ? bestRoutes : bestRoutes2;
 
@@ -242,7 +242,7 @@ public class ChangsAlgorithm implements ConstructionAlgorithm {
         Route routeToInsert = null;
 
         for (Route route : routes) {
-            ValueAndPosition valueAndPosition = SolomonI1Algorithm.getC2ValueAndPosition(route, u, dataModel, new Parameter());
+            ValueAndPosition valueAndPosition = MTSolomonAlgorithm.getC2ValueAndPosition(route, u, dataModel, new Parameter());
             if (valueAndPosition != null
                     && (bestValueAndPosition == null || bestValueAndPosition.value < valueAndPosition.value)) {
                 bestValueAndPosition = valueAndPosition;

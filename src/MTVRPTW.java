@@ -29,7 +29,7 @@ public class MTVRPTW {
     public static void testAll() {
         StringBuilder logMsg = new StringBuilder();
         ConstructionAlgorithm[] constructionAlgorithms
-                = {new GreedyAlgorithm(), new SolomonI1Algorithm(), new ClusterRouting(), new ChangsAlgorithm()};
+                = {new GreedyAlgorithm(), new MTSolomonAlgorithm(), new ClusterRouting(), new ChangsAlgorithm()};
 //        solutionConstructionAlgorithms = Arrays.copyOfRange(solutionConstructionAlgorithms, 1, 2);
         int numAlgorithms = constructionAlgorithms.length;
 
@@ -128,7 +128,7 @@ public class MTVRPTW {
             List<Route>[] solution = new ArrayList[inputFiles.length];
             for (int i = 0; i < inputFiles.length; i++) {
                 DataModel dataModel = new DataModel(testDirectory + "/" + inputFiles[i], configs);
-                List<Route> initialSolution = new SolomonI1Algorithm().run(dataModel);
+                List<Route> initialSolution = new MTSolomonAlgorithm().run(dataModel);
                 solution[i] = RelocateAlgorithm.run(initialSolution, dataModel);
 //                solution[i] = OrOpt2OptAlgorithm.run(initialSolution, dataModel);
 

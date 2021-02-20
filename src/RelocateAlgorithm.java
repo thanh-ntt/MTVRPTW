@@ -8,32 +8,10 @@ import java.util.*;
 public class RelocateAlgorithm {
     public static List<Route> run(List<Route> solution, DataModel dataModel) {
         List<List<Route>> neighbourSolutions = new ArrayList<>();
-//        neighbourSolutions.add(solution);  // also add current solution to the neighborhood
-        List<Integer> selectedRouteIndices = selectRouteIndices(solution);
-        for (int idx : selectedRouteIndices) {
+        for (int idx = 0; idx < solution.size(); idx++) {
             // Use deep copy so that we can modify routes without changing the original solution
             List<Route> curSolution = Utils.deepCopySolution(solution);
             Route r1 = curSolution.remove(idx);  // selected route
-
-            // Try exchange operator
-            // For each customer in r1
-//            for (int p1 = 1; p1 < r1.getLength(); p1++) {
-//                if (r1.getCustomerAt(p1) == dataModel.getDepot()) continue;  // skip depot
-//                outerLoopExchange:
-//                for (int j = 0; j < curSolution.size(); j++) {  // iterate all remaining routes
-//                    Route r2 = curSolution.get(j);
-//                    for (int p2 = 1; p2 < r2.getLength(); p2++) {  // iterate all demand nodes in r2
-//                        if (r2.getCustomerAt(p2) == dataModel.getDepot()) continue;  // skip depot
-//                        if (Utils.checkExchangeOperator(dataModel, r1, p1, r2, p2)) {
-//                            Node u1 = r1.removeCustomerAtIndex(p1);
-//                            Node u2 = r2.removeCustomerAtIndex(p2);
-//                            r1.insertAtPosition(p1, u2);
-//                            r2.insertAtPosition(p2, u1);
-//                            break outerLoopExchange;
-//                        }
-//                    }
-//                }
-//            }
 
             // Try relocate operator
             // Relocate depending on the acceptance criterion: best-feasible
@@ -92,7 +70,6 @@ public class RelocateAlgorithm {
         // TODO: find better heuristic to approximate search neighbor
         List<Route> bestNeighborhood = Collections.min(neighbourSolutions, (a, b) -> {
             if (a.size() != b.size()) return a.size() - b.size();
-//            else return Utils.compareTotalDistance(dataModel, a, b);
             else {  // compare shortest route length
                 // TODO: try to rationale this: why shorter route length works
                 int shortestRouteLengthA = a.stream().min(Comparator.comparingInt(Route::getLength)).get().getLength();
@@ -104,18 +81,5 @@ public class RelocateAlgorithm {
         assert Utils.isValidSolution(dataModel, bestNeighborhood);
 
         return bestNeighborhood;
-    }
-
-    public static List<Integer> selectRouteIndices(List<Route> solution) {
-        // TODO: select more clever
-//        double averageRouteLength = solution.stream().mapToInt(r -> r.getLength()).average().getAsDouble();
-//        int minRouteLength = solution.stream().mapToInt(r -> r.getLength()).min().getAsInt();
-        List<Integer> selectedRouteIndices = new ArrayList<>();
-        for (int i = 0; i < solution.size(); i++) {
-//            if (solution.get(i).getLength() <= averageRouteLength) {
-            selectedRouteIndices.add(i);
-//            }
-        }
-        return selectedRouteIndices;
     }
 }

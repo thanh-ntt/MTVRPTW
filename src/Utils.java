@@ -6,25 +6,6 @@ public class Utils {
     private final static double EPSILON = 0.00001;
     private final static DecimalFormat df = new DecimalFormat("0.00");
 
-    public static String getSolutionStats(List<Route> routes, boolean showRouteStats) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Total # vehicles: " + routes.size() + "\n");
-        if (showRouteStats) {
-            for (int i = 0; i < routes.size(); i++) {
-                sb.append("   Vehicle #" + (i + 1) + ":\n");
-                sb.append(getRouteStats(routes.get(i)));
-            }
-        }
-        return sb.toString();
-    }
-
-    public static String getRouteStats(Route route) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("     Path: " + Arrays.toString(route.routedPath.toArray()) + "\n");
-        sb.append("     Arrival time: " + Arrays.toString(route.arrivalTimes.stream().map(df::format).toArray()) + "\n");
-        return sb.toString();
-    }
-
     /**
      * Get a deep copy of a solution where modification of routes in the newly created solution does not
      * affect the original solution.
@@ -57,18 +38,6 @@ public class Utils {
         }
 
         return true;
-    }
-
-    public static boolean isParallelRoutesValid(DataModel dataModel, List<List<Route>> parallelRoutes) {
-        Set<Node> unServedCustomers = new HashSet<>(dataModel.getDemandNodes());
-        for (List<Route> routes : parallelRoutes) {
-            for (Route route : routes) {
-                for (Node c : route.routedPath) {
-                    if (c != dataModel.getDepot() && !unServedCustomers.remove(c)) return false;
-                }
-            }
-        }
-        return unServedCustomers.isEmpty();
     }
 
     public static Set<Node> getRoutedCustomers(List<Route> routes) {
@@ -164,7 +133,8 @@ public class Utils {
         double pushForwardAtNext2 = newServiceTimeAtNext2 - (p2 == r2.getLength() ? r2.getLatestArrivalTimeAtDepot() : r2.getStartingServiceTimeAt(p2));  // p2 instead of p2 + 1 because haven't inserted yet
 
         // Total push-forward in time
-        double timeCost = pushForwardAtNext1 + pushForwardAtNext2;
+//        double timeCost = pushForwardAtNext1 + pushForwardAtNext2;
+        double timeCost = pushForwardAtNext2;  // no need pushForwardAtNext1 since we're finding best relocate position for same customer
         return timeCost;
     }
 
@@ -300,6 +270,30 @@ public class Utils {
             time += cur.serviceTime + dataModel.dist(cur, next);
         }
         return waitingTime;
+    }
+
+
+    public static String getSolutionStats(List<Route> routes, boolean showRouteStats) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Total # vehicles: " + routes.size() + "\n");
+        if (showRouteStats) {
+            for (int i = 0; i < routes.size(); i++) {
+                sb.append("   Vehicle #" + (i + 1) + ":\n");
+                sb.append(getRouteStats(routes.get(i)));
+            }
+        }
+        return sb.toString();
+    }
+
+    public static String getRouteStats(Route route) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("     Path: " + Arrays.toString(route.routedPath.toArray()) + "\n");
+        sb.append("     Arrival time: " + Arrays.toString(route.arrivalTimes.stream().map(df::format).toArray()) + "\n");
+        return sb.toString();
+    }
+
+    public static double getSolutionTravelTime(List<Route> s) {
+        return s.stream().mapToDouble(Route::getLatestArrivalTimeAtDepot).sum();
     }
 
     /**

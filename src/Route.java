@@ -144,7 +144,7 @@ public class Route {
                 // arrival time = starting service time at previous node + service time + time travel
                 arrivalTime = previousCustomerServiceTime + routedPath.get(i - 1).serviceTime + dataModel.dist(routedPath.get(i - 1), routedPath.get(i));
             }
-            assert arrivalTime <= routedPath.get(i).dueTime;
+//            assert arrivalTime <= routedPath.get(i).dueTime;
             arrivalTimes.add(arrivalTime);
         }
     }
@@ -323,7 +323,7 @@ public class Route {
     double getPushForwardTimeAfterInsertion(Node u, int p) {
         Node m = routedPath.get(p - 1), n = routedPath.get(p);
         double arrivalTimeAtU = getStartingServiceTimeAt(p - 1) + m.serviceTime + dataModel.dist(m, u);
-        assert !Utils.greaterThan(arrivalTimeAtU, u.dueTime);  // this time feasibility condition should be checked before
+//        assert !Utils.greaterThan(arrivalTimeAtU, u.dueTime);  // this time feasibility condition should be checked before
         double startingServiceTimeAtU = Math.max(arrivalTimeAtU, u.readyTime);
         double oldStartingServiceTimeCustomerN = getStartingServiceTimeAt(p);
         double newArrivalTimeCustomerN = startingServiceTimeAtU + u.serviceTime + dataModel.dist(u, n);

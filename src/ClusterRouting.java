@@ -46,7 +46,6 @@ public class ClusterRouting implements ConstructionAlgorithm {
         }
 
         // Apply the merging approach (to reduce # vehicles needed)
-        assert Utils.isParallelRoutesValid(dataModel, subSolutions);
         List<Route> mergedSolution = mergeRoutes(subSolutions);
         assert Utils.isValidSolution(dataModel, mergedSolution);
 //        logger.info("Merge routes, # vehicles: " + mergedSolution.size());
@@ -115,10 +114,10 @@ public class ClusterRouting implements ConstructionAlgorithm {
         orderedCustomers.sort((a, b) -> Double.compare(dataModel.distFromDepot(b), dataModel.distFromDepot(a)));
 //        orderedCustomers.sort(Comparator.comparingInt(a -> a.readyTime));
 
-        List<Route> bestRoutes = SolomonI1Algorithm.run(orderedCustomers, 0, dataModel);
+        List<Route> bestRoutes = MTSolomonAlgorithm.run(orderedCustomers, 0, dataModel);
 
         orderedCustomers.sort(Comparator.comparingDouble(a -> a.dueTime));
-        List<Route> bestRoutes2 = SolomonI1Algorithm.run(orderedCustomers, 0, dataModel);
+        List<Route> bestRoutes2 = MTSolomonAlgorithm.run(orderedCustomers, 0, dataModel);
 
         bestRoutes = bestRoutes.size() < bestRoutes2.size() ? bestRoutes : bestRoutes2;
 
@@ -184,7 +183,7 @@ public class ClusterRouting implements ConstructionAlgorithm {
         Route routeToInsert = null;
 
         for (Route route : routes) {
-            ValueAndPosition valueAndPosition = SolomonI1Algorithm.getC2ValueAndPosition(route, u, dataModel, new Parameter());
+            ValueAndPosition valueAndPosition = MTSolomonAlgorithm.getC2ValueAndPosition(route, u, dataModel, new Parameter());
             if (valueAndPosition != null
                     && (bestValueAndPosition == null || bestValueAndPosition.value < valueAndPosition.value)) {
                 bestValueAndPosition = valueAndPosition;
