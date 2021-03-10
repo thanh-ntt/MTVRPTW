@@ -2,30 +2,35 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * A modification of the Solomon's I1 insertion heuristic (Solomon, 1987).
- * Here, we modify the insertion heuristic to take advantage of the multi-trip nature of the MTVRPTW.
+ * A sequential insertion heuristic for Multi-trip VRP with Time Window.
+ * This algorithm is inspired by Solomon's I1 insertion heuristic (Solomon, 1987).
  */
 public class MTSolomonAlgorithm implements ConstructionAlgorithm {
-    static final Parameter[] PARAMETERS = {new Parameter(1, 1, 0), new Parameter(2, 1, 0),
-        new Parameter(1, 0, 1), new Parameter(2, 0, 1), new Parameter(1, 0.5, 0.5), new Parameter(2, 0.5, 0.5)};
-//        new Parameter(1, 0.25, 0.75), new Parameter(2, 0.25, 0.75), new Parameter(1, 0.75, 0.25), new Parameter(2, 0.75, 0.25)};
+    // We use 6 sets of parameters, similar to Solomon, 1987
+    // Each parameter set is used to compute cost function in I1 insertion heuristic
+    static final Parameter[] PARAMETERS = {new Parameter(1, 1, 0), new Parameter(2, 1, 0), new Parameter(1, 0, 1),
+            new Parameter(2, 0, 1), new Parameter(1, 0.5, 0.5), new Parameter(2, 0.5, 0.5)};
 
     /**
-     * Here we try different initialization criteria as suggested by Solomon:
+     * First we try different initialization criteria as suggested by Solomon:
      *  1. Farthest un-routed customer
      *  2. Un-routed customer with earliest deadline
+     *  Then we take the best solution from these 2 initialization criteria.
      */
     @Override
     public List<Route> run(DataModel dataModel) {
-        Set<Node> unRoutedCustomers = dataModel.getDemandNodes();
-        List<Node> firstOrderedCustomers = new ArrayList<>(unRoutedCustomers);
-        firstOrderedCustomers.sort((a, b) -> Double.compare(dataModel.distFromDepot(b), dataModel.distFromDepot(a)));
+        Set<Node> allCustomers = dataModel.getDemandNodes();
 
-        List<Node> secondOrderedCustomers = new ArrayList<>(unRoutedCustomers);
-        secondOrderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
+        List<Node> orderedByDistance = new ArrayList<>(allCustomers);
+        orderedByDistance.sort((a, b) -> Double.compare(dataModel.distFromDepot(b), dataModel.distFromDepot(a)));
 
-        List<List<Node>> customerSets = new ArrayList<>(Arrays.asList(firstOrderedCustomers, secondOrderedCustomers));
-        List<List<Route>> solutions = customerSets.stream().map(orderedCustomers -> run(orderedCustomers, dataModel.getDepot().readyTime, dataModel)).collect(Collectors.toList());
+        List<Node> orderedByDeadline = new ArrayList<>(allCustomers);
+        orderedByDeadline.sort(Comparator.comparingInt(a -> a.dueTime));
+
+        List<List<Node>> orderedCustomerSets = new ArrayList<>(Arrays.asList(orderedByDistance, orderedByDeadline));
+        List<List<Route>> solutions = orderedCustomerSets.stream()
+                .map(orderedCustomerSet -> run(orderedCustomerSet, dataModel.getDepot().readyTime, dataModel))
+                .collect(Collectors.toList());
 
         List<Route> bestSolution = null;
         for (List<Route> solution : solutions) {
@@ -36,57 +41,35 @@ public class MTSolomonAlgorithm implements ConstructionAlgorithm {
     }
 
     /**
-     * Run I1 insertion heuristic to route the list of un-routed customers.
-     * <p>
+     * Run I1 sequential insertion heuristic to route the list of un-routed customers.
      * This method is made static so that other algorithms can use this as a sub-routine.
      *
-     * Here we try all parameter choices as suggested in Solomon, 1987
+     * Here we try 6 parameter choices as suggested in Solomon, 1987
      *
      * @param orderedCustomers list of un-routed customer, ordered by some criteria
-     * @param departureTimeFromDepot
-     * @return
+     * @param departureTimeFromDepot to be used by other algorithms, set to 0 in MTSolomonAlgorithm
+     * @return the best solution constructed from the parameter sets
      */
     public static List<Route> run(List<Node> orderedCustomers, double departureTimeFromDepot, DataModel dataModel) {
-        List<Route> bestSolution = null;
-        for (Parameter parameter : PARAMETERS) {
-            List<Route> solution = runWithParameter(orderedCustomers, departureTimeFromDepot, dataModel, parameter);
-            if (bestSolution == null || solution.size() < bestSolution.size()) {
-                bestSolution = solution;
-            }
-        }
-        return bestSolution;
+        return Arrays.stream(PARAMETERS)
+                .map(parameter -> runWithParameter(orderedCustomers, departureTimeFromDepot, dataModel, parameter))
+                .min(Comparator.comparingInt(List::size)).get();
     }
 
     /**
-     * Similar to the overwrite run method, but this method returns all solutions, not just the best solution.
-     * @param dataModel
-     * @return
+     * Run I1 sequential insertion heuristic for a specific parameter set.
+     * @param orderedCustomers list of customers ordered by a specific criterion
+     * @param departureTimeFromDepot to be used by other algorithms, default to 0
+     * @param dataModel store all information related to the test case
+     * @param parameter the parameter for cost function in I1 insertion heuristic
+     * @return solution (list of route) constructed by the sequential insertion heuristic
      */
-    public static List<List<Route>> runGetAllSolutions(DataModel dataModel) {
-        Set<Node> unRoutedCustomers = dataModel.getDemandNodes();
-        List<Node> firstOrderedCustomers = new ArrayList<>(unRoutedCustomers);
-        firstOrderedCustomers.sort((a, b) -> Double.compare(dataModel.distFromDepot(b), dataModel.distFromDepot(a)));
-
-        List<Node> secondOrderedCustomers = new ArrayList<>(unRoutedCustomers);
-        secondOrderedCustomers.sort(Comparator.comparingInt(a -> a.dueTime));
-
-        List<List<Node>> customerSets = new ArrayList<>(Arrays.asList(firstOrderedCustomers, secondOrderedCustomers));
-        List<List<Route>> solutions = new ArrayList<>();
-
-        for (Parameter parameter : PARAMETERS) {
-            List<Route> s = customerSets.stream().map(customerSet -> runWithParameter(customerSet, 0, dataModel, parameter)).min(Comparator.comparingInt(List::size)).get();
-            solutions.add(s);
-        }
-        return solutions;
-    }
-
     public static List<Route> runWithParameter(List<Node> orderedCustomers, double departureTimeFromDepot,
                                                DataModel dataModel, Parameter parameter) {
-        List<Node> unRoutedCustomers = new ArrayList<>(orderedCustomers);
-        List<Route> routes = new ArrayList<>();
-        // Apply Solomon's sequential insertion heuristic
+        List<Node> unRoutedCustomers = new ArrayList<>(orderedCustomers);  // Avoid modifying the original list
+        List<Route> solution = new ArrayList<>();
         do {
-            // Seed can be the customer based on the ordering
+            // Seed node is the customer based on the ordering
             Node seed = unRoutedCustomers.remove(0);
             // Initialize the route to (depot, seed, depot)
             Route route = new Route(dataModel, seed, departureTimeFromDepot);
@@ -112,21 +95,23 @@ public class MTSolomonAlgorithm implements ConstructionAlgorithm {
                 }
             }
 
-            routes.add(route);
+            solution.add(route);
         } while (!unRoutedCustomers.isEmpty());
 
-        return routes;
+        return solution;
     }
 
     /**
-     * Get the best customer to be inserted in the route, and the position to be inserted.
-     * Details in Solomon, 1987
-     * <p>
+     * Get the best customer to be inserted in the route, and the position to be inserted
+     * based on evaluation function c2
+     *
      * c2(i(u*), u*, j(u*)) = max[c2(i(u), u, j(u))], u un-routed and feasible
-     * <p>
      * c2 = lambda * d0u - c1(i, u, j)
+     *
      * is the benefit derived from servicing a customer on the partial route being constructed,
      * rather than on a direct route.
+     *
+     * @return the best customer to be inserted and its position in the route, or null if there is no feasible customer
      */
     static CustomerPosition getBestCustomerAndPosition(Route route, List<Node> unRoutedCustomers,
                                                        DataModel dataModel, Parameter parameter) {
@@ -148,11 +133,11 @@ public class MTSolomonAlgorithm implements ConstructionAlgorithm {
      * @return insertion cost or null if it's not feasible to insert this customer into the route.
      */
     public static ValueAndPosition getC2ValueAndPosition(Route route, Node u, DataModel dataModel, Parameter parameter) {
-        assert !route.routedPath.contains(u);
+//        assert !route.routedPath.contains(u);
         ValueAndPosition minC1 = null;
 
         for (int p = 1; p < route.getLength(); p++) {
-            Double curCost = computeC1InsertionCost(route, u, p, dataModel, parameter);
+            Double curCost = getC1InsertionCost(route, u, p, dataModel, parameter);
             if (curCost != null && (minC1 == null || curCost < minC1.value)) {
                 minC1 = new ValueAndPosition(curCost, p);
             }
@@ -170,20 +155,16 @@ public class MTSolomonAlgorithm implements ConstructionAlgorithm {
      *
      * @return insertion cost or null if it's not feasible to insert this customer into the position.
      */
-    static Double computeC1InsertionCost(Route route, Node u, int p, DataModel dataModel, Parameter parameter) {
+    static Double getC1InsertionCost(Route route, Node u, int p, DataModel dataModel, Parameter parameter) {
         // Check capacity constraint and time constraint
         if (!route.canInsertCustomerAt(p, u)) return null;
-
-        double diu = dataModel.dist(route.routedPath.get(p - 1), u);
-        double duj = dataModel.dist(u, route.routedPath.get(p));
-        double dij = dataModel.dist(route.routedPath.get(p - 1), route.routedPath.get(p));
+        Node i = route.get(p - 1), j = route.get(p);
 
         // Route travel time increase, c11 in I1, Solomon, 1987
-        double c11 = diu + duj - dij;
+        double c11 = dataModel.dist(i, u) + dataModel.dist(u, j) - dataModel.dist(i, j);
         // compute service push forward in service starting time at customer ip, this is same as (bju - bj)
         double c12 = route.getPushForwardTimeAfterInsertion(u, p);
         // I1 insertion heuristic - Solomon, 1987
-        double c1 = parameter.alpha1 * c11 + parameter.alpha2 * c12;
-        return c1;
+        return parameter.alpha1 * c11 + parameter.alpha2 * c12;  // c1 cost function
     }
 }

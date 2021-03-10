@@ -1,7 +1,21 @@
 import java.util.*;
 
 /**
- * Iterated local search for the MTVRPTW.
+ * Iterated Local Search for the MTVRPTW.
+ * ILS:
+ *  1. Initial solution construction (MT-Solomon)
+ *  2. While termination condition not met:
+ *      Intensification:
+ *          Local search: Or-opt, Relocate
+ *          Neighborhood move: Exchange
+ *      Diversification:
+ *          2-opt*
+ *  3. Optimize the travel distance (post-optimization step)
+ *     We use a multi-start strategy to optimize the total distance travelled.
+ *     Select the local optimal solutions (as initial solution for distance improvement phase) from the previous phase,
+ *     all having number of vehicles equivalent to the best found solution.
+ *
+ *  Some of the aforementioned algorithms are modified to adapt for the multi-trip nature of MTVRPTW.
  */
 public class ILS implements ConstructionAlgorithm {
     DataModel dataModel;
@@ -10,54 +24,105 @@ public class ILS implements ConstructionAlgorithm {
     public List<Route> run(DataModel dataModel) {
         this.dataModel = dataModel;
         List<Route> initialSolution = new MTSolomonAlgorithm().run(dataModel);
-        List<Integer> numExchanges = new ArrayList<>(Arrays.asList(10, 100));
-        List<Route> bestSolution = numExchanges.stream().map(n -> runWithParameter(dataModel, initialSolution, n)).min(Comparator.comparingInt(List::size)).get();
+
+        List<Integer> numExchanges = new ArrayList<>(Arrays.asList(10, 100));  // use different # exchanges
+
+        List<List<Route>> localOptima = new ArrayList<>();  // solutions found with ILS
+        // Run the ILS algorithm with different number of exchanges - vehicle # optimization phase
+        numExchanges.forEach(nE -> localOptima.addAll(runWithConfig(dataModel, initialSolution, nE)));
+
+        // Different configurations might give different # vehicles, only keep solutions with least # vehicles
+        int bestNumberOfVehicles = localOptima.stream().min(Comparator.comparingInt(List::size)).get().size();
+        localOptima.removeIf(s -> s.size() > bestNumberOfVehicles);
+
+        localOptima.forEach(s -> optimizeDistance(s, dataModel));  // Distance improvement phase
+
+        // Get solution with lowest total distance
+        List<Route> bestSolution = localOptima.stream().min(Comparator.comparingDouble(s -> Utils.getTotalDistance(dataModel, s))).get();
+        bestSolution.forEach(Route::removeDuplicatedDepot);  // Remove dummy depots (not affect final result)
         return bestSolution;
     }
 
-    public List<Route> runWithParameter(DataModel dataModel, List<Route> initialSolution, int numExchanges) {
-        List<Route> curSolution = Utils.deepCopySolution(initialSolution);
-        // While termination condition not satisfied
+    /**
+     * Run ILS with configuration (# exchanges in local move)
+     * Local search move: Or-opt algorithm to optimize the routes, then Relocate algorithm to reduce # vehicles
+     * Acceptance criteria: accept all
+     * Perturbation scheme: random exchange moves (once read intensificationThreshold, do perturbation)
+     * If the algorithm is able to reduce the # vehicle by 1, reset the total iterationThreshold
+     *
+     * @param dataModel the test case data
+     * @param initialSolution
+     * @param numExchanges number of random exchange operators in local search neighborhood move
+     * @return list of best solutions (same # vehicles)
+     */
+    public List<List<Route>> runWithConfig(DataModel dataModel, List<Route> initialSolution, int numExchanges) {
+        List<List<Route>> localOptima = new ArrayList<>();
+        List<Route> solution = Utils.deepCopySolution(initialSolution);
+        // Termination conditions
         int numIteration = 0, iterationThreshold = 5000, intensificationThreshold = 100;
         outerWhile:
         while (numIteration < iterationThreshold) {
             int numIntensification = 0;
             while (numIntensification++ < intensificationThreshold && numIteration++ < iterationThreshold) {
-                curSolution = OrOptAlgorithm.run(curSolution, dataModel);
-                List<Route> nextSolution = RelocateAlgorithm.run(curSolution, dataModel);
-                if (nextSolution.size() < curSolution.size()) {  // reduce # vehicle, restart algorithm
-                    curSolution = nextSolution;
+                solution = OrOptAlgorithm.run(solution, dataModel);
+                localOptima.add(Utils.deepCopySolution(solution));  // Add to local optima list
+                List<Route> nextSolution = RelocateAlgorithm.run(solution, dataModel);
+
+                if (nextSolution.size() < solution.size()) {  // reduce # vehicle, restart algorithm
+                    solution = nextSolution;
                     numIteration = 0;  // running up to iterationThreshold again
+                    localOptima.clear();  // all previously stored local optima has higher # vehicles, discard
                     continue outerWhile;
                 } else {  // same # vehicles, move to a neighbourhood solution
                     neighbourhoodMove(nextSolution, numExchanges);
-                    curSolution = nextSolution;  // accept all
+                    solution = nextSolution;  // accept all
                 }
             }
             // Perturbation
-            perturb2OptStar(curSolution);
+            perturb(solution);
         }
-        assert Utils.isValidSolution(dataModel, curSolution);
-        return curSolution;
+
+        return localOptima;
     }
 
     /**
-     * Run a number of random exchange operators to move from a solution to a neighbourhood
+     * Optimize the total distance travel of the solution.
+     * We use a combination of Or-opt algorithm and Exchange algorithm.
+     * Both algorithms use first-improving move strategy.
+     * @param solution
+     * @param dataModel
+     */
+    void optimizeDistance(List<Route> solution, DataModel dataModel) {
+        double prevDistance = Utils.getTotalDistance(dataModel, solution);
+        boolean localOptimal = false;
+        while (!localOptimal) {
+            OrOptAlgorithm.optimizeDistance(solution, dataModel);
+            ExchangeAlgorithm.optimizeDistance(solution, dataModel);
+            double curDistance = Utils.getTotalDistance(dataModel, solution);
+            if (curDistance < prevDistance) {
+                prevDistance = curDistance;
+            } else {
+                localOptimal = true;
+            }
+        }
+    }
+
+    /**
+     * Run a number of random exchange operators to move from a solution to its neighbor.
      * @param s current solution
      * @param numExchanges number of random exchanges
      */
     void neighbourhoodMove(List<Route> s, int numExchanges) {
         int n = s.size();
         Random random = new Random(0);
-        int numIterations = 0;
-        int countExchanges = 0;
-        while (countExchanges < numExchanges && numIterations < 100000) {
+        int numIterations = 0, countExchanges = 0, numIterationsThreshold = 100000;
+        while (countExchanges < numExchanges && numIterations < numIterationsThreshold) {
             numIterations++;
             int r1Idx = random.nextInt(n), r2Idx = random.nextInt(n);
             if (r1Idx == r2Idx) continue;
             Route r1 = s.get(r1Idx), r2 = s.get(r2Idx);
             int p1 = random.nextInt(r1.getLength()), p2 = random.nextInt(r2.getLength());
-            Node u1 = r1.getCustomerAt(p1), u2 = r2.getCustomerAt(p2);
+            Node u1 = r1.get(p1), u2 = r2.get(p2);
             if (u1 == dataModel.getDepot() || u2 == dataModel.getDepot()) continue;
             if (Utils.checkExchangeOperator(dataModel, r1, p1, r2, p2)) {
                 r1.removeCustomerAtIndex(p1);
@@ -69,7 +134,12 @@ public class ILS implements ConstructionAlgorithm {
         }
     }
 
-    void perturb2OptStar(List<Route> s) {
+    /**
+     * Perturbation.
+     * Here we use 2-opt* algorithm as the perturbation.
+     * @param s current solution
+     */
+    void perturb(List<Route> s) {
         for (int r1Idx = 0; r1Idx < s.size() - 1; r1Idx++) {
             for (int r2Idx = r1Idx + 1; r2Idx < s.size(); r2Idx++) {
                 twoOptStar(s.get(r1Idx), s.get(r2Idx));
@@ -77,16 +147,19 @@ public class ILS implements ConstructionAlgorithm {
         }
     }
 
+    /**
+     * Run 2-opt* exchange with the best-feasible scheme on 2 routes.
+     */
     void twoOptStar(Route r1, Route r2) {
         double minCost = 1e9;
         int bestP1 = -1, bestP2 = -1;
         int r1Load = 0, r2Load = 0;
         // Find the best 2-opt* exchange
         for (int p1 = 0; p1 < r1.getLength() - 1; p1++) {
-            Node a1 = r1.getCustomerAt(p1), b1 = r1.getCustomerAt(p1 + 1);
+            Node a1 = r1.get(p1), b1 = r1.get(p1 + 1);
             r1Load = a1 == dataModel.getDepot() ? 0 : r1Load + a1.demand;
             for (int p2 = 0; p2 < r2.getLength() - 1; p2++) {
-                Node a2 = r2.getCustomerAt(p2), b2 = r2.getCustomerAt(p2 + 1);
+                Node a2 = r2.get(p2), b2 = r2.get(p2 + 1);
                 if (a1 == dataModel.getDepot() && a2 == dataModel.getDepot()) continue;
                 r2Load = a2 == dataModel.getDepot() ? 0 : r2Load + a2.demand;
 

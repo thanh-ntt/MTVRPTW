@@ -1,9 +1,11 @@
 import java.util.*;
 
 /**
- * Local search with built-in perturbation.
- * Perturbation: exchange operator
- * Local search: relocate operator
+ * Local search move: Relocate operator.
+ * For each route in the solution, try to relocate (un-route) all customers to other routes.
+ * We use best-acceptance strategy for relocate algorithm (for each customer, find the best feasible relocate position).
+ * Use push-forward (Solomon, 1997) as the cost function for the relocate operator.
+ * Return only the best neighbor.
  */
 public class RelocateAlgorithm {
     public static List<Route> run(List<Route> solution, DataModel dataModel) {
@@ -13,11 +15,11 @@ public class RelocateAlgorithm {
             List<Route> curSolution = Utils.deepCopySolution(solution);
             Route r1 = curSolution.remove(idx);  // selected route
 
-            // Try relocate operator
-            // Relocate depending on the acceptance criterion: best-feasible
+            // Relocate operator
+            // Relocate based on the acceptance criterion: best-feasible
             int p1 = 1;
             while (p1 < r1.getLength()) {  // for each customer in r1
-                Node u = r1.getCustomerAt(p1);
+                Node u = r1.get(p1);
                 if (u == dataModel.getDepot()) {  // skip depot
                     p1++;
                     continue;
@@ -28,9 +30,10 @@ public class RelocateAlgorithm {
                 for (int j = 0; j < curSolution.size(); j++) {
                     Route r2 = curSolution.get(j);
                     for (int p2 = 1; p2 <= r2.getLength(); p2++) {
+                        // Check if u can be inserted into position p2 of r2
                         if ((p2 < r2.getLength() && r2.canInsertCustomerAt(p2, u))
                                 || (p2 == r2.getLength() && r2.canAppendAtLastPosition(u))) {
-                            double cost = Utils.getCostRelocateOperator(dataModel, r1, p1, r2, p2);
+                            double cost = Utils.getPushForwardAfterRelocation(dataModel, r1.get(p1), r2, p2);
                             if (cost < minCost) {
                                 minCost = cost;
                                 r2Idx = j;
@@ -40,46 +43,36 @@ public class RelocateAlgorithm {
                     }
                 }
                 if (r2Idx != -1) {
-                    Node u1 = r1.removeCustomerAtIndex(p1);
-                    assert u1 == u;
+                    Node u1 = r1.removeCustomerAtIndex(p1);  // u1 == u, but still need to remove from r1
                     Route r2 = curSolution.get(r2Idx);
-                    if (p2Idx == r2.getLength()) {
+                    if (p2Idx == r2.getLength()) {  // make another trip
                         r2.appendAtLastPosition(u1);
                         r2.appendAtLastPosition(dataModel.getDepot());
                     } else {
                         r2.insertAtPosition(p2Idx, u1);
                     }
-
-                    assert Utils.isValidRoute(dataModel, r2);
                     // No need to increase p1 since already remove customer at p1
                 } else {
                     p1++;
                 }
             }
-
-            // Add back selected route if needed
-            if (!r1.getDemandNodes().isEmpty()) {
+            if (!r1.isEmptyRoute()) {  // Add back selected route if needed
                 curSolution.add(r1);
             }
 
-            // Add to neighbourSolution
-            neighbourSolutions.add(curSolution);
+            neighbourSolutions.add(curSolution);  // Add to neighbourSolutions list
         }
 
         // Find best local move
-        // TODO: find better heuristic to approximate search neighbor
-        List<Route> bestNeighborhood = Collections.min(neighbourSolutions, (a, b) -> {
+        List<Route> bestNeighbor = Collections.min(neighbourSolutions, (a, b) -> {
             if (a.size() != b.size()) return a.size() - b.size();
-            else {  // compare shortest route length
-                // TODO: try to rationale this: why shorter route length works
+            else {  // compare shortest route's length
                 int shortestRouteLengthA = a.stream().min(Comparator.comparingInt(Route::getLength)).get().getLength();
                 int shortestRouteLengthB = b.stream().min(Comparator.comparingInt(Route::getLength)).get().getLength();
                 return shortestRouteLengthA - shortestRouteLengthB;
             }
         });
 
-        assert Utils.isValidSolution(dataModel, bestNeighborhood);
-
-        return bestNeighborhood;
+        return bestNeighbor;
     }
 }

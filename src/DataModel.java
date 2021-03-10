@@ -3,26 +3,21 @@ import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.stream.IntStream;
 
-// TODO: make all variables protected, so other classes cannot change them
+/**
+ * A data model to store all information related to a test case.
+ */
 public class DataModel {
-    double[][] distanceTable;
-    // TODO: refactor, only store Node[] array, not a lot of variables like this
-    int[][] timeWindows;
-    int[] serviceTimes;
-    int[] demands;
-    double[] latestDepartureTimes;  // latest time the vehicle can leave the depot and still serve each customer
-    int vehicleCapacity;
-    Node[] nodes;  // depot + all customers
-    int numCustomers;
-    int numNodes;  // depot + customers
+    private double[][] distanceTable;
+    private int[][] timeWindows;
+    private int[] serviceTimes;
+    private int[] demands;
+    private double[] latestDepartureTimes;  // latest time the vehicle can leave the depot and still serve each customer
+    private int vehicleCapacity;
+    private Node[] nodes;  // depot + all customers
+    private int numNodes;  // depot + customers
 
-    Configurations configs;
-
-    // TODO: Move some methods to Utils class
-
-    public DataModel(String inputFilePath, Configurations configs) {
-        // Read configs
-        this.configs = configs;
+    public DataModel(String inputFilePath, int numCustomers) {
+        numNodes = numCustomers + 1;
         try {
             this.readInputs(inputFilePath);
         }  catch (FileNotFoundException e) {
@@ -36,10 +31,8 @@ public class DataModel {
         Scanner scan = new Scanner(file);
 
         for (int i = 0; i < 4; i++) scan.nextLine();
-        numCustomers = configs.numCustomers;
-        numNodes = numCustomers + 1;
         scan.nextInt();
-        setVehicleCapacity(scan.nextInt());
+        vehicleCapacity = scan.nextInt();
         for (int i = 0; i < 5; i++) scan.nextLine();
 
         distanceTable = new double[numNodes][numNodes];
@@ -69,18 +62,6 @@ public class DataModel {
     // Getters & setters
     public int getTotalDemands() {
         return IntStream.of(demands).sum();
-    }
-
-    public int getNumCustomers() {
-        return numCustomers;
-    }
-
-    void setVehicleCapacity(int capacity) {
-        this.vehicleCapacity = (int) (capacity * configs.capacityRatio);
-    }
-
-    public int getDeltaThreshold() {
-        return this.configs.deltaThreshold;
     }
 
     public int getVehicleCapacity() {
@@ -113,39 +94,5 @@ public class DataModel {
 
     public Node getDepot() {
         return nodes[0];
-    }
-}
-
-class Node {
-    final int id;
-    final int demand;
-    final int readyTime, dueTime;
-    final int serviceTime;
-    final double xCoord;
-    final double yCoord;
-
-    public Node(int id, double xCoord, double yCoord, int demand, int readyTime, int dueTime, int serviceTime) {
-        this.id = id;
-        this.xCoord = xCoord;
-        this.yCoord = yCoord;
-        this.demand = demand;
-        this.readyTime = readyTime;
-        this.dueTime = dueTime;
-        this.serviceTime = serviceTime;
-    }
-
-    public String toString() {
-        if (id == 0) return "Depot";
-        else return "c" + id;
-    }
-
-    @Override
-    public int hashCode() {
-        return Integer.hashCode(id);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        return id == ((Node) o).id;
     }
 }

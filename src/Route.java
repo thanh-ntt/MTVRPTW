@@ -64,26 +64,13 @@ public class Route {
         depot = dataModel.getDepot();
         routedPath = new ArrayList<>(l.routedPath);
         routedPath.addAll(m.routedPath.subList(1, m.routedPath.size()));  // skip the first depot in m
-        initializeArrivalTimes(routedPath, routedPath.get(0).readyTime);
-
-        // TODO: refactor this (put into initializeVehicleLoad method)
-        // Initialize vehicle load in each trip
-        vehicleLoadInCurTrip = new ArrayList<>(Collections.nCopies(routedPath.size(), 0));
-
-        int lastDepotIdx = 0, curIdx = 1, loadSum = 0;
-        while (curIdx < vehicleLoadInCurTrip.size()) {
-            if (routedPath.get(curIdx) == depot) {
-                for (int i = lastDepotIdx + 1; i <= curIdx; i++)
-                    vehicleLoadInCurTrip.set(i, loadSum);
-                lastDepotIdx = curIdx;
-                loadSum = 0;
-            } else {
-                loadSum += routedPath.get(curIdx).demand;
-            }
-            curIdx++;
-        }
+        initializeVariables();
     }
 
+    /**
+     * Initialize the vehicle load and arrival times array.
+     * To be called only when the routedPath is set and checked (valid routedPath).
+     */
     public void initializeVariables() {
         initializeVehicleLoad();
         initializeArrivalTimes(routedPath, 0);
@@ -258,13 +245,26 @@ public class Route {
         }
     }
 
+    public void removeDuplicatedDepot() {
+        int p = 0;
+        while (p < routedPath.size() - 1) {
+            if (routedPath.get(p) == depot && routedPath.get(p + 1) == depot) {
+                routedPath.remove(p);
+                arrivalTimes.remove(p);
+                vehicleLoadInCurTrip.remove(p);
+            } else {
+                p++;
+            }
+        }
+    }
+
     public boolean canInsertCustomerAt(int p, Node u) {
         return checkCapacityConstraint(p, u.demand) && checkTimeConstraint(p, u);
     }
 
     // Only need to check capacity when the removing customer is depot
     public boolean canRemoveCustomerAt(int p) {
-        return (routedPath.get(p) != depot) || (vehicleLoadInCurTrip.get(p) + vehicleLoadInCurTrip.get(p + 1) <= dataModel.vehicleCapacity);
+        return (routedPath.get(p) != depot) || (vehicleLoadInCurTrip.get(p) + vehicleLoadInCurTrip.get(p + 1) <= dataModel.getVehicleCapacity());
     }
 
     /**
@@ -339,7 +339,8 @@ public class Route {
         return Math.max(arrivalTimes.get(p), routedPath.get(p).readyTime);
     }
 
-    Node getCustomerAt(int p) {
+    // Get the customer at position p
+    Node get(int p) {
         return routedPath.get(p);
     }
 
@@ -361,6 +362,14 @@ public class Route {
 
     public List<Node> getDemandNodes() {
         return routedPath.stream().filter(c -> c != depot).collect(Collectors.toList());
+    }
+
+    /**
+     * Check if the route is empty (can contains only depots)
+     * @return
+     */
+    public boolean isEmptyRoute() {
+        return routedPath.stream().allMatch(c -> c == depot);
     }
 
     @Override

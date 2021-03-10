@@ -1,5 +1,9 @@
 import java.util.List;
 
+/**
+ * Interface for all solution construction algorithms.
+ * Also include meta-heuristic since they return a solution from a test case.
+ */
 public interface ConstructionAlgorithm {
     /**
      * Run the algorithm to construct a valid solution for the MTVRPTW.

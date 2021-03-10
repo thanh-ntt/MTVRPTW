@@ -1,7 +1,14 @@
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Utility methods and utility classes.
+ */
 public class Utils {
     private final static double EPSILON = 0.00001;
     private final static DecimalFormat df = new DecimalFormat("0.00");
@@ -9,9 +16,6 @@ public class Utils {
     /**
      * Get a deep copy of a solution where modification of routes in the newly created solution does not
      * affect the original solution.
-     *
-     * @param solution
-     * @return
      */
     public static List<Route> deepCopySolution(List<Route> solution) {
         return solution.stream().map(Route::new).collect(Collectors.toList());
@@ -52,8 +56,8 @@ public class Utils {
      * Check if we can exchange 2 nodes at position p1, p2 in route r1, r2
      */
     public static boolean checkExchangeOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2) {
-        Node u1 = r1.getCustomerAt(p1);
-        Node u2 = r2.getCustomerAt(p2);
+        Node u1 = r1.get(p1);
+        Node u2 = r2.get(p2);
 
         // Check capacity constraint
         if (!r1.checkCapacityConstraint(p1, u2.demand - u1.demand)
@@ -62,8 +66,8 @@ public class Utils {
         }
 
         // Check time constraint
-        Node prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
-        Node prev2 = r2.getCustomerAt(p2 - 1), next2 = r2.getCustomerAt(p2 + 1);
+        Node prev1 = r1.get(p1 - 1), next1 = r1.get(p1 + 1);
+        Node prev2 = r2.get(p2 - 1), next2 = r2.get(p2 + 1);
 
         // Check route r1
         double newArrivalTimeAtP1 = r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.dist(prev1, u2);
@@ -88,10 +92,12 @@ public class Utils {
      * Get cost of an exchange operator.
      * This cost function is inspired by Solomon's I1 insertion heuristic,
      * where we take into account both the distance and push-forward time incurred by the exchange.
+     *
+     * @deprecated
      */
     public static double getCostExchangeOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2, Parameter parameter) {
-        Node u1 = r1.getCustomerAt(p1), prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
-        Node u2 = r2.getCustomerAt(p2), prev2 = r2.getCustomerAt(p2 - 1), next2 = r2.getCustomerAt(p2 + 1);
+        Node u1 = r1.get(p1), prev1 = r1.get(p1 - 1), next1 = r1.get(p1 + 1);
+        Node u2 = r2.get(p2), prev2 = r2.get(p2 - 1), next2 = r2.get(p2 + 1);
         double distanceCost = (dataModel.dist(prev1, u2) + dataModel.dist(u2, next1) + dataModel.dist(prev2, u1) + dataModel.dist(u1, next2))
                 - (dataModel.dist(prev1, u1) + dataModel.dist(u1, next1) + dataModel.dist(prev2, u2) + dataModel.dist(u2, next2));
 
@@ -113,7 +119,7 @@ public class Utils {
     }
 
     /**
-     * Gain of relocating (inserting) customer at index p1 of route r1 into position p2 of route r2.
+     * Cost of relocating (inserting) customer u1 into position p2 of route r2.
      * Here we define the cost function as the difference in push forward time.
      * The intuition is that we want to measure how inserting a customer to route r2 would make the route
      * become more/less "relaxed" - the ability to insert more customers into the route (r2).
@@ -121,21 +127,12 @@ public class Utils {
      * The total waiting time is a suitable candidate for the above objective, however, computing total waiting
      * time is expensive, thus we approximate it with the push-forward time.
      */
-    public static double getCostRelocateOperator(DataModel dataModel, Route r1, int p1, Route r2, int p2) {
-        Node u1 = r1.getCustomerAt(p1), prev1 = r1.getCustomerAt(p1 - 1), next1 = r1.getCustomerAt(p1 + 1);
-        Node next2 = p2 == r2.getLength() ? r2.depot : r2.getCustomerAt(p2), prev2 = r2.getCustomerAt(p2 - 1);
-
-        double newServiceTimeAtNext1 = Math.max(r1.getStartingServiceTimeAt(p1 - 1) + prev1.serviceTime + dataModel.dist(prev1, next1), next1.readyTime);
-        double pushForwardAtNext1 = newServiceTimeAtNext1 - r1.getStartingServiceTimeAt(p1 + 1);
-
+    public static double getPushForwardAfterRelocation(DataModel dataModel, Node u1, Route r2, int p2) {
+        Node next2 = p2 == r2.getLength() ? r2.depot : r2.get(p2), prev2 = r2.get(p2 - 1);
         double newServiceTimeAtP2 = Math.max(r2.getStartingServiceTimeAt(p2 - 1) + prev2.serviceTime + dataModel.dist(prev2, u1), u1.readyTime);
         double newServiceTimeAtNext2 = Math.max(newServiceTimeAtP2 + u1.serviceTime + dataModel.dist(u1, next2), next2.readyTime);
-        double pushForwardAtNext2 = newServiceTimeAtNext2 - (p2 == r2.getLength() ? r2.getLatestArrivalTimeAtDepot() : r2.getStartingServiceTimeAt(p2));  // p2 instead of p2 + 1 because haven't inserted yet
-
-        // Total push-forward in time
-//        double timeCost = pushForwardAtNext1 + pushForwardAtNext2;
-        double timeCost = pushForwardAtNext2;  // no need pushForwardAtNext1 since we're finding best relocate position for same customer
-        return timeCost;
+        double pushForwardAtNext2 = newServiceTimeAtNext2 - (p2 == r2.getLength() ? r2.getLatestArrivalTimeAtDepot() : r2.getStartingServiceTimeAt(p2));  // p2 instead of p2 + 1 because haven't inserted ye
+        return pushForwardAtNext2;
     }
 
     /**
@@ -158,25 +155,18 @@ public class Utils {
         r2.initializeVariables();
     }
 
-    /**
-     * Compare 2 solutions s1 and s2 by total waiting time of the vehicle in all routes.
-     * @return f(s1) - f(s2), normalize to {-1, 1}
-     */
-    public static int compareTotalDistance(DataModel dataModel, List<Route> s1, List<Route> s2) {
-        double waitingTimeS1 = s1.stream().mapToDouble(r -> Utils.getTotalDistance(dataModel, r)).sum();
-        double waitingTimeS2 = s2.stream().mapToDouble(r -> Utils.getTotalDistance(dataModel, r)).sum();
-        if (Utils.equals(waitingTimeS1, waitingTimeS2)) return 0;
-        else if (Utils.greaterThan(waitingTimeS1, waitingTimeS2)) return 1;
-        else return -1;
-    }
-
-    static double getTotalDistance(DataModel dataModel, Route route) {
+    static double getDistanceTravel(DataModel dataModel, Route route) {
         double sum = 0;
         for (int i = 0; i < route.getLength() - 1; i++) {
 //            sum += Math.max(route.getCustomerAt(i).readyTime - route.getArrivalTimeAt(i), 0);
-            sum += dataModel.dist(route.getCustomerAt(i), route.getCustomerAt(i + 1));
+            sum += dataModel.dist(route.get(i), route.get(i + 1));
         }
         return sum;
+    }
+
+    // Get the total distance travel in all routes
+    static double getTotalDistance(DataModel dataModel, List<Route> s) {
+        return s.stream().mapToDouble(r -> getDistanceTravel(dataModel, r)).sum();
     }
 
     /**
@@ -292,8 +282,25 @@ public class Utils {
         return sb.toString();
     }
 
-    public static double getSolutionTravelTime(List<Route> s) {
-        return s.stream().mapToDouble(Route::getLatestArrivalTimeAtDepot).sum();
+    /**
+     * Write to a file with format:
+     * Route #: route
+     */
+    public static void writeOutputToFile(List<Route> solution, File outputDirectory, String testSet, String inputFile) {
+        try {
+            File testSetDirectory = new File(outputDirectory + "/" + testSet);
+            if (!testSetDirectory.exists()) testSetDirectory.mkdir();
+            File outputFile = new File(outputDirectory + "/" + testSet + "/" + inputFile);
+            if (!outputFile.exists()) outputFile.createNewFile();
+            FileWriter fileWriter = new FileWriter(outputFile);
+            for (int r = 0; r < solution.size(); r++) {
+                fileWriter.write("Route " + (r + 1) + ": " + solution.get(r).toString() + "\n");
+            }
+            fileWriter.close();
+        } catch (IOException e) {
+            System.out.println("An error occurred during writing output:");
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -449,4 +456,45 @@ class Parameter {
         alpha1 = 0;
         alpha2 = 1;
     }
+}
+
+class Node {
+    final int id;
+    final int demand;
+    final int readyTime, dueTime;
+    final int serviceTime;
+    final double xCoord;
+    final double yCoord;
+
+    public Node(int id, double xCoord, double yCoord, int demand, int readyTime, int dueTime, int serviceTime) {
+        this.id = id;
+        this.xCoord = xCoord;
+        this.yCoord = yCoord;
+        this.demand = demand;
+        this.readyTime = readyTime;
+        this.dueTime = dueTime;
+        this.serviceTime = serviceTime;
+    }
+
+    public String toString() {
+//        if (id == 0) return "Depot";
+//        else return "c" + id;
+        return String.valueOf(id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(id);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return id == ((Node) o).id;
+    }
+}
+
+enum TEST_CONFIG {
+    TEST_LS,
+    TEST_ALL,
+    TEST_ILS;
 }
