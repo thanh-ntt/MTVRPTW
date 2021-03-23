@@ -10,22 +10,22 @@ public class OrOptAlgorithm {
     public static List<Route> run(List<Route> solution, DataModel dataModel) {
         // Use deep copy so that we can modify routes without changing the original solution
         List<Route> curSolution = Utils.deepCopySolution(solution);
-        curSolution.forEach(r -> orOptBestImproving(r, dataModel));
+        curSolution.forEach(r -> orOptBestFeasible(r, dataModel));
         return curSolution;
     }
 
     public static void optimizeDistance(List<Route> s, DataModel dataModel) {
-        s.forEach(r -> orOptFirstImproving(r, dataModel));
+        s.forEach(r -> orOptFirstFeasible(r, dataModel));
     }
 
     /**
      * Run Or-opt algorithm to optimize a route.
-     * Acceptance criterion is set to best-improving move.
+     * Acceptance criterion is set to best-feasible move.
      * The cost function is defined based on travel distance.
      * @param route input route
      * @param dataModel
      */
-    static void orOptBestImproving(Route route, DataModel dataModel) {
+    static void orOptBestFeasible(Route route, DataModel dataModel) {
         int n = route.getLength();
         if (n <= 3) return;
 
@@ -78,7 +78,7 @@ public class OrOptAlgorithm {
 
     /**
      * Run Or-opt algorithm to optimize a route.
-     * Acceptance criterion is set to first-improving move:
+     * Acceptance criterion is set to first-feasible move:
      *      Shortens the tour by repeating Segment Shift moves for segment
      *      length equal 1, 2, 3 until no improvement can by done:
      *      in every iteration immediately makes permanent the first move found that gives any length gain.
@@ -86,7 +86,7 @@ public class OrOptAlgorithm {
      * @param route input route
      * @param dataModel
      */
-    static void orOptFirstImproving(Route route, DataModel dataModel) {
+    static void orOptFirstFeasible(Route route, DataModel dataModel) {
         int n = route.getLength();
         if (n <= 3) return;
         boolean localOptimal = false;

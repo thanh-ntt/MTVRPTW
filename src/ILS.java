@@ -64,6 +64,7 @@ public class ILS implements ConstructionAlgorithm {
         while (numIteration < iterationThreshold) {
             int numIntensification = 0;
             while (numIntensification++ < intensificationThreshold && numIteration++ < iterationThreshold) {
+                // Subsidiary local search
                 solution = OrOptAlgorithm.run(solution, dataModel);
                 localOptima.add(Utils.deepCopySolution(solution));  // Add to local optima list
                 List<Route> nextSolution = RelocateAlgorithm.run(solution, dataModel);
@@ -73,13 +74,14 @@ public class ILS implements ConstructionAlgorithm {
                     numIteration = 0;  // running up to iterationThreshold again
                     localOptima.clear();  // all previously stored local optima has higher # vehicles, discard
                     continue outerWhile;
-                } else {  // same # vehicles, move to a neighbourhood solution
-                    neighbourhoodMove(nextSolution, numExchanges);
+                } else {  // same # vehicles, jump to a different neighbourhood
+                    // Perform weak-perturbation
+                    weakPerturb(nextSolution, numExchanges);
                     solution = nextSolution;  // accept all
                 }
             }
-            // Perturbation
-            perturb(solution);
+            // Perform strong-perturbation
+            strongPerturb(solution);
         }
 
         return localOptima;
@@ -112,12 +114,12 @@ public class ILS implements ConstructionAlgorithm {
      * @param s current solution
      * @param numExchanges number of random exchanges
      */
-    void neighbourhoodMove(List<Route> s, int numExchanges) {
+    void weakPerturb(List<Route> s, int numExchanges) {
         int n = s.size();
         Random random = new Random(0);
-        int numIterations = 0, countExchanges = 0, numIterationsThreshold = 100000;
-        while (countExchanges < numExchanges && numIterations < numIterationsThreshold) {
-            numIterations++;
+        int countIterations = 0, countExchanges = 0, numIterationsThreshold = 100000;
+        while (countExchanges < numExchanges && countIterations < numIterationsThreshold) {
+            countIterations++;
             int r1Idx = random.nextInt(n), r2Idx = random.nextInt(n);
             if (r1Idx == r2Idx) continue;
             Route r1 = s.get(r1Idx), r2 = s.get(r2Idx);
@@ -139,7 +141,7 @@ public class ILS implements ConstructionAlgorithm {
      * Here we use 2-opt* algorithm as the perturbation.
      * @param s current solution
      */
-    void perturb(List<Route> s) {
+    void strongPerturb(List<Route> s) {
         for (int r1Idx = 0; r1Idx < s.size() - 1; r1Idx++) {
             for (int r2Idx = r1Idx + 1; r2Idx < s.size(); r2Idx++) {
                 twoOptStar(s.get(r1Idx), s.get(r2Idx));
