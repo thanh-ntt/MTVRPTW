@@ -59,7 +59,7 @@ public class ILS implements ConstructionAlgorithm {
         List<List<Route>> localOptima = new ArrayList<>();
         List<Route> solution = Utils.deepCopySolution(initialSolution);
         // Termination conditions
-        int numIteration = 0, iterationThreshold = 5000, intensificationThreshold = 100;
+        int numIteration = 0, iterationThreshold = 10000, intensificationThreshold = 100;
         outerWhile:
         while (numIteration < iterationThreshold) {
             int numIntensification = 0;

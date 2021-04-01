@@ -10,7 +10,7 @@ import java.util.logging.Logger;
  * Print output statistics.
  */
 public class MTVRPTW {
-    static final int numCustomers = 200;  // Set this to 100 to test Solomon's test set
+    static final int numCustomers = 100;  // Set this to 100 to test Solomon's test set
     static final TEST_CONFIG CONFIG = TEST_CONFIG.TEST_ILS;
     static final boolean SHOW_TEST_CASE_STATS = true;
     static File inputDirectory, outputDirectory;
