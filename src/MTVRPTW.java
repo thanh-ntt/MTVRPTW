@@ -32,7 +32,7 @@ public class MTVRPTW {
     }
 
     /**
-     * Run the Iterated Local Search algorithm.
+     * Test the solution algorithm (iterated local search).
      */
     public static void testILS() throws IOException {
         StringBuilder logMsg = new StringBuilder();
@@ -58,7 +58,7 @@ public class MTVRPTW {
             for (int i = 0; i < inputFiles.length; i++) {
                 DataModel dataModel = new DataModel(testDirectory + "/" + inputFiles[i], numCustomers);
                 long start = System.nanoTime();
-                solution[i] = new ILS().run(dataModel);
+                solution[i] = new SolutionAlgorithm().run(dataModel);
 
                 assert Utils.isValidSolution(dataModel, solution[i]);
 
@@ -139,7 +139,7 @@ public class MTVRPTW {
      * Test different algorithms:
      *  - Solution construction algorithms: Greedy, MTSolomonAlgorithm, ClusterRouteMergeDFS
      *  - Local search algorithm: RelocateAlgorithm
-     *  - Iterated local search
+     *  - Iterated local search (solution algorithm)
      */
     public static void testAll() {
         StringBuilder logMsg = new StringBuilder();
@@ -168,7 +168,7 @@ public class MTVRPTW {
                 solutions[results.length - 2][i] = RelocateAlgorithm.run(solutions[1][i], dataModel);
                 results[results.length - 2][i] = solutions[results.length - 2][i].size();
                 // ILS
-                solutions[results.length - 1][i] = new ILS().run(dataModel);
+                solutions[results.length - 1][i] = new SolutionAlgorithm().run(dataModel);
                 results[results.length - 1][i] = solutions[results.length - 1][i].size();
             }
             int[] sumSolutionSize = new int[results.length];

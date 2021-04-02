@@ -1,14 +1,13 @@
 import java.util.*;
 
 /**
- * Iterated Local Search for the MTVRPTW.
- * ILS:
+ * Solution algorithm for the MTVRPTW.
  *  1. Initial solution construction (MT-Solomon)
  *  2. While termination condition not met:
- *      Intensification:
+ *      While strong-perturbation condition not met:
  *          Local search: Or-opt, Relocate
- *          Neighborhood move: Exchange
- *      Diversification:
+ *          Weak-perturbation: Exchange
+ *      Strong-perturbation:
  *          2-opt*
  *  3. Optimize the travel distance (post-optimization step)
  *     We use a multi-start strategy to optimize the total distance travelled.
@@ -17,7 +16,7 @@ import java.util.*;
  *
  *  Some of the aforementioned algorithms are modified to adapt for the multi-trip nature of MTVRPTW.
  */
-public class ILS implements ConstructionAlgorithm {
+public class SolutionAlgorithm implements ConstructionAlgorithm {
     DataModel dataModel;
 
     @Override
@@ -29,7 +28,7 @@ public class ILS implements ConstructionAlgorithm {
 
         List<List<Route>> localOptima = new ArrayList<>();  // solutions found with ILS
         // Run the ILS algorithm with different number of exchanges - vehicle # optimization phase
-        numExchanges.forEach(nE -> localOptima.addAll(runWithConfig(dataModel, initialSolution, nE)));
+        numExchanges.forEach(nE -> localOptima.addAll(runWithNumExchanges(dataModel, initialSolution, nE)));
 
         // Different configurations might give different # vehicles, only keep solutions with least # vehicles
         int bestNumberOfVehicles = localOptima.stream().min(Comparator.comparingInt(List::size)).get().size();
@@ -44,26 +43,26 @@ public class ILS implements ConstructionAlgorithm {
     }
 
     /**
-     * Run ILS with configuration (# exchanges in local move)
+     * The iterated local search algorithm
      * Local search move: Or-opt algorithm to optimize the routes, then Relocate algorithm to reduce # vehicles
-     * Acceptance criteria: accept all
+     * Acceptance criteria: best neighborhood
      * Perturbation scheme: random exchange moves (once read intensificationThreshold, do perturbation)
      * If the algorithm is able to reduce the # vehicle by 1, reset the total iterationThreshold
      *
-     * @param dataModel the test case data
+     * @param dataModel the problem test data
      * @param initialSolution
-     * @param numExchanges number of random exchange operators in local search neighborhood move
-     * @return list of best solutions (same # vehicles)
+     * @param numExchanges number of random exchange operators in weak-perturbation move
+     * @return list of local optima solutions with same minimum number of vehicles
      */
-    public List<List<Route>> runWithConfig(DataModel dataModel, List<Route> initialSolution, int numExchanges) {
+    public List<List<Route>> runWithNumExchanges(DataModel dataModel, List<Route> initialSolution, int numExchanges) {
         List<List<Route>> localOptima = new ArrayList<>();
         List<Route> solution = Utils.deepCopySolution(initialSolution);
         // Termination conditions
-        int numIteration = 0, iterationThreshold = 10000, intensificationThreshold = 100;
+        int numIteration = 0, iterationThreshold = 10000, weakPerturbationThreshold = 100;
         outerWhile:
         while (numIteration < iterationThreshold) {
-            int numIntensification = 0;
-            while (numIntensification++ < intensificationThreshold && numIteration++ < iterationThreshold) {
+            int numWeakPerturbations = 0;
+            while (numWeakPerturbations++ < weakPerturbationThreshold && numIteration++ < iterationThreshold) {
                 // Subsidiary local search
                 solution = OrOptAlgorithm.run(solution, dataModel);
                 localOptima.add(Utils.deepCopySolution(solution));  // Add to local optima list
@@ -74,8 +73,7 @@ public class ILS implements ConstructionAlgorithm {
                     numIteration = 0;  // running up to iterationThreshold again
                     localOptima.clear();  // all previously stored local optima has higher # vehicles, discard
                     continue outerWhile;
-                } else {  // same # vehicles, jump to a different neighbourhood
-                    // Perform weak-perturbation
+                } else {  // same # vehicles, perform weak-perturbation
                     weakPerturb(nextSolution, numExchanges);
                     solution = nextSolution;  // accept all
                 }
@@ -88,9 +86,9 @@ public class ILS implements ConstructionAlgorithm {
     }
 
     /**
-     * Optimize the total distance travel of the solution.
+     * Optimize the total travelled distance of the solution.
      * We use a combination of Or-opt algorithm and Exchange algorithm.
-     * Both algorithms use first-improving move strategy.
+     * Both algorithms use first-feasible move strategy.
      * @param solution
      * @param dataModel
      */
@@ -110,7 +108,8 @@ public class ILS implements ConstructionAlgorithm {
     }
 
     /**
-     * Run a number of random exchange operators to move from a solution to its neighbor.
+     * Weak-perturbation move: run a number of random exchange operators
+     * to move from a solution to its neighbor.
      * @param s current solution
      * @param numExchanges number of random exchanges
      */
