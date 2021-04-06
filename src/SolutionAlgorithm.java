@@ -6,12 +6,11 @@ import java.util.*;
  *  2. While termination condition not met:
  *      While strong-perturbation condition not met:
  *          Local search: Or-opt, Relocate
- *          Weak-perturbation: Exchange
- *      Strong-perturbation:
- *          2-opt*
+ *          Weak-perturbation: Random exchange moves
+ *      Strong-perturbation: 2-opt*
  *  3. Optimize the travel distance (post-optimization step)
- *     We use a multi-start strategy to optimize the total distance travelled.
- *     Select the local optimal solutions (as initial solution for distance improvement phase) from the previous phase,
+ *     We use a multi-start strategy to optimize the total distance travelled:
+ *     select the local optimal solutions (as initial solution for distance improvement phase) from the previous phase,
  *     all having number of vehicles equivalent to the best found solution.
  *
  *  Some of the aforementioned algorithms are modified to adapt for the multi-trip nature of MTVRPTW.
@@ -19,12 +18,15 @@ import java.util.*;
 public class SolutionAlgorithm implements ConstructionAlgorithm {
     DataModel dataModel;
 
+    // Set parameters and constants
+    static final List<Integer> numExchanges = new ArrayList<>(Arrays.asList(10, 100));  // use different # exchanges
+    static final int iterationThreshold = 10000, weakPerturbationThreshold = 100;
+    static final int numAttemptExchangeThreshold = 100000;
+
     @Override
     public List<Route> run(DataModel dataModel) {
         this.dataModel = dataModel;
         List<Route> initialSolution = new MTSolomonAlgorithm().run(dataModel);
-
-        List<Integer> numExchanges = new ArrayList<>(Arrays.asList(10, 100));  // use different # exchanges
 
         List<List<Route>> localOptima = new ArrayList<>();  // solutions found with ILS
         // Run the ILS algorithm with different number of exchanges - vehicle # optimization phase
@@ -58,7 +60,7 @@ public class SolutionAlgorithm implements ConstructionAlgorithm {
         List<List<Route>> localOptima = new ArrayList<>();
         List<Route> solution = Utils.deepCopySolution(initialSolution);
         // Termination conditions
-        int numIteration = 0, iterationThreshold = 10000, weakPerturbationThreshold = 100;
+        int numIteration = 0;
         outerWhile:
         while (numIteration < iterationThreshold) {
             int numWeakPerturbations = 0;
@@ -116,8 +118,8 @@ public class SolutionAlgorithm implements ConstructionAlgorithm {
     void weakPerturb(List<Route> s, int numExchanges) {
         int n = s.size();
         Random random = new Random(0);
-        int countIterations = 0, countExchanges = 0, numIterationsThreshold = 100000;
-        while (countExchanges < numExchanges && countIterations < numIterationsThreshold) {
+        int countIterations = 0, countExchanges = 0;
+        while (countExchanges < numExchanges && countIterations < numAttemptExchangeThreshold) {
             countIterations++;
             int r1Idx = random.nextInt(n), r2Idx = random.nextInt(n);
             if (r1Idx == r2Idx) continue;

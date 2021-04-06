@@ -1,6 +1,6 @@
 # MTVRPTW
 
-This repository contains the implementation of the solution algorithms for Multi-Trip Vehicle Routing Problem with Time Window (MTVRPTW).
+This repository contains the implementation of the solution algorithm for Multi-Trip Vehicle Routing Problem with Time Window (MTVRPTW).
 
 This is my B.Comp. Dissertation. The report can be found in Report.pdf.
 
@@ -14,9 +14,9 @@ What I have done in this project:
 
 -   Designed a meta-heuristic that outperforms existing benchmarks.
 
--   Analyze different design choices for the proposed meta-heuristic.
+-   Analyzed different design choices for the proposed meta-heuristic.
 
--   Evaluate the performance of the meta-heuristic w.r.t different
+-   Evaluated the performance of the meta-heuristic w.r.t different
     parameters.
 
 

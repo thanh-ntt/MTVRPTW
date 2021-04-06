@@ -63,7 +63,7 @@ public class RelocateAlgorithm {
             neighbourSolutions.add(curSolution);  // Add to neighbourSolutions list
         }
 
-        // Find best local move
+        // Find best neighbor, using shortest route's length to break tie (if 2 solutions have same vehicle number)
         List<Route> bestNeighbor = Collections.min(neighbourSolutions, (a, b) -> {
             if (a.size() != b.size()) return a.size() - b.size();
             else {  // compare shortest route's length

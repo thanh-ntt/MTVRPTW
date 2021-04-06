@@ -2,12 +2,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * A sequential insertion heuristic for Multi-trip VRP with Time Window.
+ * MT-Solomon - a sequential insertion heuristic for Multi-trip VRP with Time Window.
  * This algorithm is inspired by Solomon's I1 insertion heuristic (Solomon, 1987).
  */
 public class MTSolomonAlgorithm implements ConstructionAlgorithm {
-    // We use 6 sets of parameters, similar to Solomon, 1987
-    // Each parameter set is used to compute cost function in I1 insertion heuristic
+    // We use 6 sets of parameters (mu value is 1 in all parameter sets, so we skip that).
+    // Each parameter set is used to compute cost function in Solomon's I1 insertion heuristic
     static final Parameter[] PARAMETERS = {new Parameter(1, 1, 0), new Parameter(2, 1, 0), new Parameter(1, 0, 1),
             new Parameter(2, 0, 1), new Parameter(1, 0.5, 0.5), new Parameter(2, 0.5, 0.5)};
 
@@ -44,7 +44,7 @@ public class MTSolomonAlgorithm implements ConstructionAlgorithm {
      * Run I1 sequential insertion heuristic to route the list of un-routed customers.
      * This method is made static so that other algorithms can use this as a sub-routine.
      *
-     * Here we try 6 parameter choices as suggested in Solomon, 1987
+     * Here we try multiple parameter choices as suggested in Solomon, 1987
      *
      * @param orderedCustomers list of un-routed customer, ordered by some criteria
      * @param departureTimeFromDepot to be used by other algorithms, set to 0 in MTSolomonAlgorithm
